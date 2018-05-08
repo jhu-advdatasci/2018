@@ -1,0 +1,31 @@
+title: "Advanced Data Science"
+left:
+  - text: "Home"
+    href: index.html
+  - text: "Syllabus"
+    href: syllabus.html
+  - text: "Curriculum"
+    menu:
+      - text: "Introduction"
+        href: ./01-introduction.html
+  - text: "Homework"
+    href: homework.html
+  - text: "Projects"
+    href: projects.html
+  - text: "Staff"
+    menu:
+      - text: "Instructors"
+      - text: "Stephanie Hicks"
+        href: http://stephaniehicks.com/
+      - text: "Roger Peng"
+        href: http://www.biostat.jhsph.edu/~rpeng/
+      - text: "Teaching Assistants"
+      - text: "TBA"
+  - text: "Discussion"
+    href: discussion.html
+  - text: "Resources"
+    href: resources.html
+right:
+  - icon: fa-github fa-lg
+    href: https://github.com/jhu-advdatasci/2018
+    

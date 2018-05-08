@@ -1,0 +1,4 @@
+output:
+  html_document:
+    theme: journal
+output_dir: '.'

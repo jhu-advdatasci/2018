@@ -1,0 +1,35 @@
+---
+title: Welcome to Advanced Data Science
+---
+
+## Course Description
+
+Focuses on hands-on data analyses with a main objective of solving real-world problems. Teaches the necessary skills to gather, manage and analyze data using the R programming language. Covers an introduction to data wrangling, exploratory data analysis, statistical inference and modeling, machine learning, and high-dimensional data analysis. Teaches the necessary skills to develop data products including reproducible reports that can be used to effectively communicate results from data analyses. Trains students to become data scientists capable of both applied data analysis and critical evaluation of the next generation next generation of statistical methods.
+
+## Course objectives
+
+Upon successfully completing this course, students will be able to:
+
+1. Formulate quantitative models to address scientific questions
+2. Obtain, clean, transform, and process raw data into usable formats
+3. Organize and perform a complete data analysis, from exploration, to analysis, to synthesis, to communication
+4. Apply a range of statistical methods for inference and prediction
+5. Build data science products that can be used by a broad audience
+
+## Pre-requisites
+
+This course is designed for PhD students in the Biostatistics department at Johns Hopkins Bloomberg School of Public Health. It assumes a fair amount of statistical knowledge and moves relatively quickly. I am open to anyone taking the class, but since it is a core requirement for our PhD program I will not be slowing down or allowing auditors for the class. 
+
+## Course Information
+
+* Location: TBA
+* Time: Mondays and Wednesdays from 1:30-2:30pm
+* Assignments: Please see the grading section for information about assignments. 
+* Equipment: Please bring a laptop to class
+
+
+## Typos and corrections
+
+Feel free to submit typos/errors/etc via the github repository associated with the class: https://github.com/jhu-advdatasci/2018
+
+

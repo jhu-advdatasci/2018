@@ -1,0 +1,8 @@
+---
+title: Discussion
+---
+
+
+All course related discussion will be handled by Slack. You need to request an invitation from the teaching assistant (TBA) to get signed up. It is critical that you do this, all course announcements will happen on Slack and your instructor will only respond to course-related questions on Slack. 
+
+https://jhu-advdatasci.slack.com/

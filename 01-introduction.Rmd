@@ -1,0 +1,12 @@
+---
+title: Introduction
+---
+
+1. __Announcements__: 
+    * TBA
+2. __Assignment__: 
+    * TBA
+3. __Lecture__: 
+    * [html](http://jhu-advdatasci.github.io/2018/lectures/01-introduction-lecture.html)
+    * [Download Rmd](https://jhu-advdatasci.github.io/2018/lectures/01-introduction-lecture.Rmd)
+    * [View Rmd on Github](https://github.com/jhu-advdatasci/2018/blob/master/lectures/01-introduction-lecture.Rmd)

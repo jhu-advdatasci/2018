@@ -1,0 +1,40 @@
+.fullslide img {
+  margin-top: -85px;
+  margin-left: -60px;
+}
+
+.super { font-size: 150% }
+.superduper { font-size: 175% }
+.huge { font-size: 200% }
+.toobig { font-size: 250% }
+.humongous { font-size: 400% }
+.fiver { font-size: 500% }
+.sixer { font-size: 600% }
+
+.bullets {
+    display: inline-block;
+}
+
+.left-column-equal {
+  width: 47%;
+  float: left;
+}
+.right-column-equal {
+  width: 47%;
+  float: right;
+}
+
+.pull-left-third {
+  float: left;
+  width: 30%;
+}
+.pull-right-third {
+  float: right;
+  width: 30%;
+}
+.pull-center-third {
+  display: inline-block; 
+  width: 33%; 
+}
+
+/*.mjx-chtml{ font-size: 100% !important; }*/
