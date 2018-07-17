@@ -26,7 +26,7 @@ This course will be very hands-on and focused on analyzing real-world data both 
 * [Introduction to statistical learning](http://www-bcf.usc.edu/~gareth/ISL/)
 * [Elements of statistical learning](https://web.stanford.edu/~hastie/ElemStatLearn/)
 * [Advanced data analysis from an elementary point of view](http://www.stat.cmu.edu/~cshalizi/ADAfaEPoV/)
-
+* [Advanced Statistical Computing](https://leanpub.com/advstatcomp)
 
 ## Blog posts of interest
 
