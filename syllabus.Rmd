@@ -4,4 +4,4 @@ title: Syllabus
 
 More coming soon!  In the mean time here is a **tentative** list of lecture topics.
 
-<iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRKAELSqVEz6edExX2sKOdFHJQDTU_70GtpK9rD5mddRDcCNzlgr0K79oXLu4PxCP0_JZCGdd94uCJo/pubhtml?gid=0&amp;range=A1:D34&amp;single=true&amp;widget=true&amp;headers=false" width="45%" height="820"></iframe>
+<iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRKAELSqVEz6edExX2sKOdFHJQDTU_70GtpK9rD5mddRDcCNzlgr0K79oXLu4PxCP0_JZCGdd94uCJo/pubhtml?gid=0&amp;range=A1:D34&amp;single=true&amp;widget=true&amp;headers=false" width="50%" height="840"></iframe>
