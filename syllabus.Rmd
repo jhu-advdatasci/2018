@@ -2,8 +2,6 @@
 title: Syllabus
 ---
 
-Below you'll find a **tentative** list of links to lecture topics.
+More coming soon!  In the mean time here is a **tentative** list of links to lecture topics.
 
-<iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRKAELSqVEz6edExX2sKOdFHJQDTU_70GtpK9rD5mddRDcCNzlgr0K79oXLu4PxCP0_JZCGdd94uCJo/pubhtml?gid=0&amp;range=A1:D34&amp;single=true&amp;widget=true&amp;headers=false"></iframe>
-
-More coming soon!
+<iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRKAELSqVEz6edExX2sKOdFHJQDTU_70GtpK9rD5mddRDcCNzlgr0K79oXLu4PxCP0_JZCGdd94uCJo/pubhtml?gid=0&amp;range=A1:D34&amp;single=true&amp;widget=true&amp;headers=false" width="100%" height="800"></iframe>
