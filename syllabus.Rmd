@@ -2,6 +2,74 @@
 title: Syllabus
 ---
 
-More coming soon!  In the mean time here is a **tentative** list of lecture topics.
+# Syllabus 
 
-<iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRKAELSqVEz6edExX2sKOdFHJQDTU_70GtpK9rD5mddRDcCNzlgr0K79oXLu4PxCP0_JZCGdd94uCJo/pubhtml?gid=0&amp;range=A1:D34&amp;single=true&amp;widget=true&amp;headers=false" width="50%" height="840"></iframe>
+Welcome to Advanced Data Science! This course will focus on hands-on data analyses with a main objective of solving real-world problems. We will teach the necessary skills to gather, manage and analyze data using the R programming language. The course will cover an introduction to data wrangling, exploratory data analysis, statistical inference and modeling, machine learning, and high-dimensional data analysis. We will teach the necessary skills to develop data products including reproducible reports that can be used to effectively communicate results from data analyses. We will train students to become data scientists capable of both applied data analysis and critical evaluation of the next generation next generation of statistical methods.
+
+### Course objectives
+
+Upon successfully completing this course, students will be able to:
+
+1. Formulate quantitative models to address scientific questions
+2. Obtain, clean, transform, and process raw data into usable formats
+3. Organize and perform a complete data analysis, from exploration, to analysis, to synthesis, to communication
+4. Apply a range of statistical methods for inference and prediction
+5. Build data science products that can be used by a broad audience
+
+
+# Course logistics 
+
+### Pre-requisites
+
+This course is designed for PhD students in the Biostatistics department at Johns Hopkins Bloomberg School of Public Health. It assumes a fair amount of statistical knowledge and moves relatively quickly. I am open to anyone taking the class, but since it is a core requirement for our PhD program I will not be slowing down or allowing auditors for the class. 
+
+### Required Textbook
+
+None. Instead, we have a list of recommended readings on the web site available at [Resources](resources.html).
+
+### Course Communication
+
+We will use Slack to organize course discussions. There are channels to ask questions and discuss the lectures, homework assignments, and final projects. The channels will be monitored by the TA during class. We will also use Slack for all annoucments, so it is important that you are signed up. Feel free to ask questions during class, or anytime. Fill out this [google poll to join Slack](). 
+
+### Office hours
+
+More on this soon. 
+
+
+
+# Course components
+
+We break down the course components and grading into two terms: 
+
+#### 140.711.01 Advanced Data Science I
+
+We will learn these concepts through hands-on data analysis assignments. Specficially, grades will be based on: 
+
+* 3 homeworks (33.3% each)
+
+#### 140.712.01 Advanced Data Science II
+
+We will learn these concepts through hands-on data analysis assignments. Specficially, grades will be based on: 
+
+* 2 homeworks (25% each)
+* 1 final project (50%)
+
+
+### Homework
+
+Homework will be submitted using git/GitHub and will be due at midnight on Fridays. We will cover more about this in the second lecture. The last commit before midnight will be used to grade the assignment. 
+
+### Final Project
+
+At the beginning of the second term, you will start to work on a data science final project. The goal of the project is to go through the complete data science process to answer questions you have about some topic of your own choosing. You will acquire the data, design your visualizations, run statistical analysis, and communicate the results. You will have the opporunity to meet with either a TA or instructor at the begining to initially help guide you in this project. You will have approximiately three weeks at the end of term to focus on the final project. 
+
+You will work closely with other classmates in a 2-4 (max) person project team. You can come up with your own teams and use Slack to find prospective team members. We recognize that individual schedules, preferences, and other constraints might limit your ability to work in a team. If this the case, ask us for permission to work alone. However, you will still be expected to complete all portions of the final project on your own. 
+
+
+### Late Day Policy
+
+Each student is given three late days for homework at the beginning of each term (711 and 712). A late day extends the individual homework deadline by 24 hours without penalty. No more than two late days may be used on any one assignment. Assignments submitted more than 48 hours after the original deadline will not be graded. We do not accept any homework under any circumstances more than 48 hours after the original deadline. Late days are intended to give you flexibility: you can use them for any reason no questions asked. You do not get any bonus points for not using your late days. Also, you can only use late days for the individual homework deadlines.
+
+Although the each student is only given a total of 3 late days, we will be accepting homework from students that pass this limit. However, we will be deducting 10% for each extra late day. For example, if you have already used all of your late days for the term, we will deduct 10% for assignments <24 hours late, and 20% points for assignments 24-48 hours late. 
+
+
