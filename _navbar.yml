@@ -4,10 +4,6 @@ left:
     href: index.html
   - text: "Syllabus"
     href: syllabus.html
-  - text: "Curriculum"
-    menu:
-      - text: "Introduction"
-        href: ./01-introduction.html
   - text: "Homework"
     href: homework.html
   - text: "Projects"
@@ -21,6 +17,8 @@ left:
         href: http://www.biostat.jhsph.edu/~rpeng/
       - text: "Teaching Assistants"
       - text: "Guoqing Wang"
+        href: https://www.jhsph.edu/departments/biostatistics/directory/students/phd.html
+      - text: "Bingkai Wang"
         href: https://www.jhsph.edu/departments/biostatistics/directory/students/phd.html
   - text: "Discussion"
     href: discussion.html

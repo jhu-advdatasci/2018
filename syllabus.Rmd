@@ -54,10 +54,25 @@ We will learn these concepts through hands-on data analysis assignments. Specfic
 * 2 homeworks (25% each)
 * 1 final project (50%)
 
+### Grading
+
+I believe the purpose of graduate education is to train you to be able to think for yourself and initiate and complete your own projects. I am super excited to talk to you about ideas, work out solutions with you, and help you to figure out statistical methods and/or data analysis. With that in mind, there might be multiple ways of approaching a given problem in an assignment or project. 
+
+I don’t think that graduate school grades are important for this purpose. This means that I don’t care very much about graduate student grades.
+
+That being said, I have to give you a grade so they will be:
+
+A - Excellent - 90%+
+B - Passing - 80%+
+C - Needs improvement - 70%+
+
+If you are getting a grade below a C it is because you basically aren’t trying/working. I rarely give them out.
+
+
 
 ### Homework
 
-Homework will be submitted using git/GitHub and will be due at midnight on Fridays. We will cover more about this in the second lecture. The last commit before midnight will be used to grade the assignment. 
+Homework will be submitted using git/GitHub and will be due at midnight on Fridays (unless otherwise stated). We will cover more about this in the second lecture. The last commit before midnight will be used to grade the assignment. 
 
 ### Final Project
 
