@@ -1,5 +1,5 @@
 ---
-title: Advanced Data Science
+title: "Advanced Data Science"
 ---
 
 Welcome to Advanced Data Science at Johns Hopkins Bloomberg School of Public Health! This course will focus on hands-on data analyses with a main objective of solving real-world problems. We will teach the necessary skills to gather, manage and analyze data using the R programming language. The course will cover an introduction to data wrangling, exploratory data analysis, statistical inference and modeling, machine learning, and high-dimensional data analysis. We will teach the necessary skills to develop data products including reproducible reports that can be used to effectively communicate results from data analyses. We will train students to become data scientists capable of both applied data analysis and critical evaluation of the next generation next generation of statistical methods.
@@ -9,7 +9,7 @@ For more information about the course objectives, pre-requisites, course structu
 ## Course Information
 
 * Location: East Baltimore Campus, Wolfe W4019
-* Time: Mondays and Wednesdays from 1:30-2:30pm
+* Time: Mondays and Wednesdays from 1:30-2:20pm
 * Assignments: Please see the grading section for information about assignments. 
 * Equipment: Please bring a laptop to class
 
