@@ -1,16 +1,19 @@
 ---
-title: "Introduction"
-output: 
-    html_document:
-        toc: true
-        toc_float: true
-        highlight: tango
-        number_sections: true
+title: Welcome to Advanced Data Science
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Putting the _science_ back in Data Science!
+Important links today: 
 
+* [Click here](https://docs.google.com/presentation/d/1GEvBI2c3bYHOkiI6JV2POJKee_a1w37GPYkIYV_srmc/edit?usp=sharing) to follow along with course introduction slides
+* Course website: [https://jhu-advdatasci.github.io/2018](https://jhu-advdatasci.github.io/2018)
+* GitHub repository with all course material: [https://github.com/jhu-advdatasci/2018](https://github.com/jhu-advdatasci/2018)
+
+Assignments: 
+
+* Please fill out the [Fall 2018 Course Survey](https://goo.gl/forms/TVvaQ04xn7PO94P13) by September 14, 2018 at 11:59pm
+* Homework 0 is due September 14, 2018 at 11:59pm. 
