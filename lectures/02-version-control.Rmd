@@ -1,0 +1,419 @@
+---
+title: Let's talk about Reproducibility and Version Control
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 1 
+fig_height: 1 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.align = "center", out.width = '70%')
+```
+
+Today we're going to talk about reproducibility, why it's such a widely-discussed topic, and ways we can mitigate against irreproducible results. 
+
+# Motivation
+
+We start the story in 1955 where a few scientists in Israel started a parody magazine about science titled [_The Journal of Irreproducible Results_](http://www.jir.com). It contained a mix of jokes, satire of scientific practice, science cartons, and a discussion of funny but real research.
+
+```{r, out.width = '50%'}
+knitr::include_graphics("https://images.gr-assets.com/books/1289885221l/18449.jpg")
+```
+
+Fast forward 61 years to 2016. Nature put together a [survey asking 
+about reproducibility in research](https://www.nature.com/news/1-500-scientists-lift-the-lid-on-reproducibility-1.19970)
+with 1500+ respondents. What they found that was that more 
+than 70% of researchers had tried and failed to reproduce 
+another scientist's experiments, and more than half admitted 
+to failing to reproduce their own experiments. Also, 52% 
+of the respondents said they believed there was a 
+"reproduciblity crisis" in science. 
+
+```{r}
+knitr::include_graphics("https://www.nature.com/polopoly_fs/7.36716.1469695923!/image/reproducibility-graphic-online1.jpeg_gen/derivatives/landscape_630/reproducibility-graphic-online1.jpeg")
+```
+
+## Why is reproducibility important?
+
+* Highly debated topics in genomics, medicine, psychology, climate change, economics
+* Led to creation of many governmental, institutional, publication policies & initiatives
+* Reproducibility is the only thing that an investigator can guarantee about a study 
+    * _"A study can reproducible, but be wrong!"_ - Jeff Leek, June 2014 Simply Statistics
+
+## Motivating example
+
+This was a project out of Duke University. The authors published paper in [Nature](http://www.nature.com/nm/journal/v12/n11/full/nm1491.html) 
+stating that they could predict whether a patient
+would respond to drug treatments based on what genes 
+were being expressed in the patient. This obviously 
+got a lot of people very excited. 
+
+```{r}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/potti.png")
+```
+
+Including these two statisticians (Keith Baggerly (left), 
+Kevin Coombes (right)) from MD Anderson Cancer Center in Houston, TX. Picture from [New York Times](http://www.nytimes.com/2011/07/08/health/research/08genes.html). 
+
+```{r}
+knitr::include_graphics("https://static01.nyt.com/images/2011/07/08/us/JP-GENES/JP-GENES-jumbo.jpg")
+```
+
+
+Short version of story: 
+
+* Some of their collaborators at MD Anderson came to them and asked to apply this to their cancer patients. 
+* These two _"forensic bioinformaticians"_, take the publicly available genomic data and try to reproduce the analysis from Anil Potti’s paper. But, they start to run into some trouble. 
+* First, they immediately realize the data and code weren’t reproducible. The data had been put into Excel and columns were swapped and mislabled. Gene labels were also mixed up. In the picture shown above here, you can actually see the lists of the genes the original authors found and the ones they found. 
+* Now, when Keith and Kevin found these mistakes, they reported them to the author, but the authors basically just shrugged them off as "clerical errors". In the mean time, the original authors continued to publish papers based on these results and they started three clinical trials using this work to decide which drugs to give to which patients.
+* So, Keith and Kevin took their concerns to Nature and the National Cancer Institute, but no would listen to them because it was so hard to believe that something so simple could lead to such drastically different results. 
+
+
+Three years later, they [published their analysis](https://projecteuclid.org/euclid.aoas/1267453942) in The Annals of Applied Statistics in 2009, a journal that medical scientists rarely read.
+
+```{r}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/baggerly.png")
+```
+
+It’s a beautiful and yet very sobering paper to read that goes through five different case studies, not just the one being discussed here, stating how simple errors in a data analysis or in the experimental design can potentially put patients at risk. 
+
+So meanwhile, many [lawsuits and injuctions](http://dig.abclocal.go.com/wtvd/docs/Duke_lawsuit_090811.pdf) 
+were filed to try and stop these clinical trials from going forward. 
+
+```{r}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/potti-lawsuit.png")
+```
+
+Duke finally started an internal review of the accusations.
+
+In 2012, The Cancer Letter reported that [Anil Potti had falsified parts of his resume](https://cancerletter.com/articles/20131204_3/) stating he was a Rhodes scholar, but was not. The [New York Times](http://www.nytimes.com/2011/07/08/health/research/08genes.html) wrote several articles on it. Keith and Kevin were [interviewed on 60 Minutes](https://www.youtube.com/watch?v=W5sZTNPMQRM). 
+
+In the end, Duke settled with families of eight cancer patients who participated in clinical trials. Four papers were retracted. Duke shut down three trials using the results. Potti resigned from Duke. You can read about how all the 
+[events unfolded here](http://www.nature.com/news/2011/110111/full/469139a/box/1.html). 
+
+```{r}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/timeline-potti.png")
+```
+
+You can [watch a video from Keith](https://goo.gl/T2nWbC)
+explaining the entire thing. It's definitely worth a watch!
+
+```{r}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/baggerly-talk.png")
+```
+
+### What can we learn from this?
+
+1. Important for data, code, analyses to be available and reproducible. Because at the end of the day, the data and code were completely reproducible, but just simply wrong. 
+2. Transparency and cooperation is critical in any study. There was clearly a lack of cooperation by the origiinal authors which led to much frustration to Keith and Kevin. 
+Keith and Kevin spent 6 years of their life trying to battle Duke to stop the clinical trials from potentially harming the patients. 
+
+## What factors could improve reproducibility? 
+
+A lot of these can be frame around the idea of a lack of statistical training or the misunderstanding of statistics and and some form of experimental design or data analysis. But, several are about making your
+analyses, methods, code and data available. 
+
+```{r, out.width = '50%'}
+knitr::include_graphics("https://www.nature.com/polopoly_fs/7.36719.1464174488!/image/reproducibility-graphic-online4.jpg_gen/derivatives/landscape_630/reproducibility-graphic-online4.jpg")
+knitr::include_graphics("https://www.nature.com/polopoly_fs/7.36727.1464174506!/image/reproducibility-graphic-online5.jpg_gen/derivatives/landscape_630/reproducibility-graphic-online5.jpg")
+```
+
+
+# Developing a system 
+
+A wise man [once said](http://kbroman.org/Tools4RR/assets/lectures/06_org_eda.pdf): 
+
+> *"Your closest collaborator is you six months ago, but you don’t reply to emails."*
+> -Karl Broman
+
+```{r, out.width='30%' }
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/broman.png")
+```
+
+## Keys to success
+
+Organizing your code in a way that allows you to easily 
+figure out what you did six months ago and is that 
+reproducible are two ways to avoid these problems. 
+
+1. Slow down and document everything
+2. Have sympathy for your future self :/ 
+3. Have a system!
+
+
+## A bad approach
+
+Even if you have never used a version control tool, you've probably 
+already done it manually: copying and renaming project folders 
+("paper-v1.doc", "paper-v2.doc", "paper-final.doc", 
+"paper_finalFINALdraft.doc", etc.) is a form of version control.
+
+```{r}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/xkcd-filenames.png")
+```
+
+## A better approach
+
+Consider the following folder structure: 
+
+* data/
+    - raw_data
+    - processed_data
+* figures/
+    - exploratory_figures
+    - final_figures
+* code/
+    - raw_code
+    - final_code/
+        - 0-preprocess.R
+        - 1-explore.R
+        - 2-model.R
+        - 3-final-plots.R
+    - rmarkdown
+* text/
+    - README
+    - writeup
+
+# Version control 
+
+What is **version control**? 
+
+* Automatically tracks versions or history of documents
+* Keeps a log of the entire history
+* Let’s you “undo” your work
+* Let’s you view what you changed
+
+There are several options for version control: 
+
+* __git/Github__ - where the cool nerds are
+* __Bitbucket__ - where the real nerds are
+* __svn__ - where the old nerds are
+* __Files on your desktop__ - where the frustrated nerds are
+
+We will use git and GitHub in this course. 
+
+## git and GitHub 
+
+[Git](https://git-scm.com) is a tool that automates and 
+enhances a lot of the tasks that arise when dealing with larger, 
+longer-living, and collaborative projects. It has also become the 
+common underpinning to many popular online code repositories, 
+[GitHub](https://github.com/) being the most popular. GitHub 
+is a online service that permits you to organize and share 
+your code in what are called repositories.
+
+```{r}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/github.png")
+```
+
+### Why is git/GitHub cool?
+
+If you ask 10 people, you'll get 10 different answers, but one of the 
+commonalities is that most people do not realize how integral it is to 
+their development process until they have started using it. 
+Still, for the sake of argument, here are some highlights:
+
+- **You can undo anything.** Git provides a *complete history* of every 
+change that has ever been made to your project, timestamped, commented, 
+and attributed. If something breaks, you always have the choice of 
+going back to a previous state.
+- **You won't *need* to keep undo-ing things.** One of the advantages 
+of using git properly is that by keeping new changes separate from a 
+stable base, you tend to avoid the massive rollbacks associated with 
+constantly tinkering with a single code.
+- **You can identify exactly when and where changes were made.** Git 
+allows you to pinpoint when a particular piece of code was changed, 
+so finding what other pieces of code a bug might affect or figuring 
+out why a certain expression was added is easy.
+- **Git forces teams to face conflicts directly.** On a team-based 
+project, many people are often working with the same code. 
+By having a tool which understands when and where files were changed, 
+it's easy to see when changes might conflict with each other. 
+While it might seem troublesome sometimes to have to deal with 
+conflicts, the alternative;*not* knowing there's a 
+conflict;is much more insidious.
+- **It's really easy for other people to help you with your projects.**
+The GitHub community is awesome because frequently people will offer
+to help you solve problems and fix typos! 
+
+```{r}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/hammer-typo.png")
+```
+
+### Setting up Git/Github
+
+There are many great tutorials on helping you install and 
+set up git and GitHub. Here are a few: 
+
+* [GitHub Classroom for Students](https://github.com/jfiksel/github-classroom-for-students#steps-for-getting-setup-with-github)  
+* [Happy Git and GitHub or the useR](http://happygitwithr.com/install-git.html) 
+
+
+```{r}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/installing-git-github.png")
+```
+
+We will be using the 
+[command line version of git](http://git-scm.com/docs/gittutorial).
+If you are unfamiliar with working on the command line, try 
+reading through the 
+[Command line interface](https://github.com/DataScienceSpecialization/courses/tree/master/01_DataScientistToolbox/02_03_commandLineInterface) 
+which is from the 
+[Data Science Specialization](https://github.com/DataScienceSpecialization/courses/tree/master/01_DataScientistToolbox) 
+course on Coursera. There are many other fantastic tutorials 
+for working on the command line.
+  
+
+# Git Basics
+
+## A basic `git` and GitHub workflow
+
+The first thing to understand about git is that the contents of your 
+project are stored in several different states and forms at any given time.
+If you think about what version control is, this might not be 
+surprising: in order to remember every change that has ever been made, 
+you need to store a record of those changes *somewhere*, and to be 
+able to handle multiple people changing the same code, you need 
+to have different copies of the project and a way to combine them.
+
+You can think about git operating on four different areas:
+
+![](https://github.com/datasciencelabs/2016/raw/master/lectures/git-and-github/images/git_layout.png)
+
+You will move your code between these different areas using the 
+following workflow: 
+
+![](https://www.silverpeas.org/images/git_everthing_is_local.png)
+
+- The **working directory** is what you are currently looking at. 
+ When you modify a file that is stored in the working directory on your
+ computer, the changes are made locally to the working directory.
+- The **staging area** is a place to collect a set of changes 
+ made to your project. If you have changed three files to fix a bug, 
+ you will add all three to the staging area so that you can remember 
+ the changes as one historical entity. It is also called the **index**. 
+ You move files from the working directory to the index 
+ using the command `git add`.
+- The **local repository** is the place where git stores everything 
+ you have ever done to your project. Even when you delete a file, a copy 
+ is stored in the repo (this is necessary for always being able to 
+ undo any change). It is important to note that a local repository 
+ does not look much at all like your project files or directories. 
+ Git has its own way of storing all the information, and if you are 
+ curious what it looks like, look in the `.git` directory in the working 
+ directory of your project. Files are moved from the index to the 
+ local repository via the command `git commit`.
+- When working in a team, every member will be working on their own 
+local repository. An **upstream repository** allows everyone to agree 
+on a single version of history. If two people have made changes on their 
+local repositories, they will combine those changes in the upstream 
+repository. In our case this upstream repository is hosted by GitHub. 
+This upstream repository is also called a **remote** in git jargon. 
+The standard github remote is named the **origin**. This repository 
+is given a web page on GitHub. One usually moves code from the local 
+repository to the remote repository using `git push`, and in the other 
+direction using `git fetch`.
+
+You can think of most git operations as moving code (or other metadata) 
+between the local and remote repositories.
+
+## Good Git habits
+
+### Commit early, commit often
+
+Git is more effective when used at a fine granularity. For starters, you can't undo what you haven't committed, so committing lots of small changes makes it easier to find the right rollback point. Also, merging becomes a lot easier when you only have to deal with a handful of conflicts.
+
+### Commit unrelated changes separately
+
+Identifying the source of a bug or understanding the reason why a particular piece of code exists is much easier when commits focus on related changes. Some of this has to do with simplifying commit messages and making it easier to look through logs, but it has other related benefits: commits are smaller and simpler, and merge conflicts are confined to only the commits which actually have conflicting code.
+
+### Do not commit binaries and other temporary files
+
+Git is meant for tracking changes. In nearly all cases, the only meaningful difference between the contents of two binaries is that they are different. If you change source files, compile, and commit the resulting binary, git sees an entirely different file. The end result is that the git repository (which contains a complete history, remember) begins to become bloated with the history of many dissimilar binaries. Worse, there's often little advantage to keeping those files in the history. An argument can be made for periodically snapshotting working binaries, but things like object files, compiled files, and editor auto-saves are basically wasted space.
+
+### Ignore files which should not be committed
+
+Git comes with a built-in mechanism for ignoring certain types of files. Placing filenames or wildcards in a `.gitignore` file placed in the top-level directory (where the `.git` directory is also located) will cause git to ignore those files when checking file status. This is a good way to ensure you don't commit the wrong files accidentally, and it also makes the output of `git status` somewhat cleaner.
+
+### Write good commit messages
+
+I cannot understate the importance of this.
+
+![](https://imgs.xkcd.com/comics/git.png)
+
+
+### Seriously. Write good commit messages.
+
+Commit messages are a way of quickly telling your future self 
+(and your collaborators) what the commit was about. For even a 
+moderately sized project, digging through tens or hundreds of commits 
+to find the change that you are looking for is a nightmare without 
+friendly summaries.
+
+By convention, commit messages start with a single-line summary, 
+then an empty line, then a more comprehensive description of the changes.
+
+[This](https://github.com/rdadolf/clangtool/commit/bdd8f1290146c28a4cb05b62ccb0ffbaaa314ff7) is an okay commit message. The changes are small, and the summary is sufficient to describe what happened.
+
+[This](https://github.com/rdadolf/protos/commit/9fcbe1084b17027e003c62043d764ed5551ddadc) is better. The summary captures the important information (major shift, direct vs. helper), and the full commit message describes what the high-level changes were.
+
+[This](https://github.com/rdadolf/autopaxos/commit/d43dd9b0a699c98bd142ba7cbc1836fbc4eba2ac). Don't do this.
+
+
+## Additional resources for learning the basics in `git`
+
+* [Learn Git on Codeacademy (~2hrs to complete)](https://www.codecademy.com/learn/learn-git)
+* [Interactive tutorial to learn git (under 15 mins to complete!)](https://try.github.io/levels/1/challenges/1)
+* [Github guides](https://guides.github.com)
+* [git - the simple guide](http://rogerdudler.github.io/git-guide/)
+* [Github Youtube videos](https://www.youtube.com/user/GitHubGuides)
+* [The Git Book](http://git-scm.com/book/en/v2) by Scott Chacon and Ben Straub
+* [Slides on the Data Science Specialization Coursera course](https://github.com/DataScienceSpecialization/courses/tree/master/01_DataScientistToolbox)
+
+
+
+# Your turn
+
+## Try the `git` routine
+
+Now that you understand the basics, try doing the following on your own GitHub account: 
+
+* [making a repo on GitHub](https://github.com/jfiksel/github-classroom-for-students#make-a-repo-on-github)
+* [cloning a repo to your local computer](https://github.com/jfiksel/github-classroom-for-students#clone-the-repo-to-your-local-computer)
+* [Make a local change, commit, and push and confirm the local change propogated to the GitHub Remote](https://github.com/jfiksel/github-classroom-for-students#make-a-local-change-commit-and-push-and-confirm-the-local-change-propogated-to-the-github-remote)
+
+Also, you can check out [GitHub Bootcamp](https://help.github.com/categories/bootcamp/) for more help. 
+
+## Fork and clone the `jhu-advdatasci/2018` repository on GitHub
+
+The lectures and homework assignments for this course are housed in the 
+[`jhu-advdatasci/2018` repository on GitHub](https://github.com/jhu-advdatasci/2018). 
+Until today, if you were unfamiliar with using git and GitHub, you probably 
+have manually downloaded the R Markdown files for each lecture.  
+
+After class today:
+
+1. Go to [https://github.com/jhu-advdatasci/2018](https://github.com/jhu-advdatasci/2018)
+2. Use `git clone` to clone the `2018` remote repository to 
+your own computer. **This step only needs to be completed once.**
+3. As changes are made to the course repository, you will 
+want to pull these changes into your local repo using `git pull`.
+**These last step will be repeated throughout the semester.**
+
+## Using GitHub Classroom to get homeworks
+
+Read through [this](https://github.com/jfiksel/github-classroom-for-students#steps-for-downloading-and-editing-assignments-from-github-classroom) to learn about how to use GitHub Classroom to get your homework assignments. 
+
+
+  
+
+  
+
+
+  
+
