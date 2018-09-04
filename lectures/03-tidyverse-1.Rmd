@@ -1,0 +1,743 @@
+---
+title: US Healthcare Spending and Coverage
+date: Sept 12, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", out.width = '70%')
+```
+
+# Motivation 
+
+In the first lecture, we learned that that in "most 
+countries, more health spending coincided with much 
+longer lives. But the 
+[U.S. diverged](https://www.nytimes.com/2018/05/14/upshot/medical-mystery-health-spending-1980.html) 
+from peer nations around 1980. 
+
+For the next three lectures, we will be analyzing health
+care data in the United States. We will be exploring 
+the following questions: 
+
+1. Is there a relationship between healthcare coverage and healthcare spending in the United States? 
+2. Which US states spend the most and which spend the least on healthcare? How does the spending distribution change across geographic regions in the United States?
+3. How do healthcare coverage and spending relate to life expectancy? 
+
+```{r out.width = "95%", echo = FALSE, out.width='90%'}
+knitr::include_graphics("https://aspe.hhs.gov/system/files/images-reports-basic/70441/fig1.jpg")
+```
+[Image source from US Department of Health and Human Services](https://aspe.hhs.gov/basic-report/overview-uninsured-united-states-summary-2011-current-population-survey)
+
+## Healthcare data
+
+We will be using the data from the [Henry J Kaiser Family Foundation (KFF)](https://www.kff.org). 
+
+* [Health Insurance Coverage of the Total Population](https://www.kff.org/other/state-indicator/total-population/) - Includes years 2013-2016
+* [Health Care Expenditures by State of Residence (in millions)](https://www.kff.org/other/state-indicator/health-care-expenditures-by-state-of-residence-in-millions/) - Includes years 1991-2014
+* [Life Expectancy at Birth (in years)](https://www.kff.org/other/state-indicator/life-expectancy)
+
+We have downloaded, re-named and saved these files in our course 
+GitHub repository under the `data/KFF/` directory. 
+
+Now, before we dig into the data analysis, we need to introduce 
+a set of R packages that we will use to analyze the data. 
+
+# Welcome to the "Tidyverse"
+
+The [tidyverse](https://www.tidyverse.org) is _"an opinionated 
+collection of R packages designed for data science. All packages 
+share an underlying philosophy and common APIs."_ 
+
+Another way of putting it is that it's a set of packages 
+that are useful specifically for data manipulation, 
+exploration and visualization with a common philosphy. 
+
+## What is this common philosphy? 
+
+The common philosphy is called _"tidy"_ data. It is 
+a standard way of mapping the meaning of a dataset
+to its structure.
+
+In _tidy_ data:
+
+* Each variable forms a column.
+* Each observation forms a row.
+* Each type of observational unit forms a table.
+
+```{r out.width = "95%", echo = FALSE}
+knitr::include_graphics("http://r4ds.had.co.nz/images/tidy-1.png")
+```
+
+Below, we are interested in transformating the table on 
+the right to the the table on the left, which is 
+considered "tidy". 
+
+```{r out.width = "95%", echo = FALSE}
+knitr::include_graphics("http://r4ds.had.co.nz/images/tidy-9.png")
+```
+
+Working with tidy data is useful because it creates a structured way of
+organizing data values within a data set. This makes the data analysis 
+process more efficient and simplifies the development of data analysis tools
+that work together. In this way, you can focus on the problem you are
+investigating, rather than the uninteresting logistics of data.  
+
+## What is in the `tidyverse`? 
+
+We can install and load the set of R packages using 
+`install.packages("tidyverse")` function. 
+
+When we load the tidyverse package using `library(tidyverse)`, 
+there are six core R packages that load:
+
+* [readr](http://readr.tidyverse.org), for data import.
+* [tidyr](http://tidyr.tidyverse.org), for data tidying.
+* [dplyr](http://dplyr.tidyverse.org), for data wrangling.
+* [ggplot2](http://ggplot2.tidyverse.org), for data visualisation.
+* [purrr](http://purrr.tidyverse.org), for functional programming.
+* [tibble](http://tibble.tidyverse.org), for tibbles, a modern re-imagining of data frames.
+
+Here, we load in the tidyverse. 
+```{r, message=FALSE}
+library(tidyverse)
+```
+
+These packages are highlighted in bold here: 
+
+```{r out.width = "95%", echo = FALSE}
+knitr::include_graphics("https://rviews.rstudio.com/post/2017-06-09-What-is-the-tidyverse_files/tidyverse1.png")
+```
+
+Because these packages all share the "tidy" philosphy, 
+the data analysis workflow is easier as you move from 
+package to package. 
+
+Here, we will focus on the `readr`,
+`tidyr` and `dplyr` R packages to import data, 
+to transform data to the "tidy" format, 
+and to wrangle data. 
+
+Next, we will give a brief description of the 
+features in each of these packages. 
+
+# Data Import
+
+There are several base R functions that allow you 
+read in data into R, which you may be familiar 
+with such as `read.table()`, `read.csv()`, 
+and `read.delim()`. Instead of using these, 
+we will use the functions in the 
+[readr](https://readr.tidyverse.org/articles/readr.html)
+R package. The main reasons for this are 
+
+1. Compared to equivalent base R functions, the 
+functions in `readr` are around 10x faser. 
+2. You can specify the column types (e.g 
+character, integer, double, logical, date, 
+time, etc)
+3. All parsing problems are recordered in 
+a data frame. 
+
+## The `readr` R package
+
+The main functions in `readr` are: 
+
+`readr` functions | Description
+--- | ---
+`read_delim()` | reads in a flat file data with a given character to separate fields
+`read_csv()` | reads in a CSV file
+`read_tsv()` | reads in a file with values separated by tabs
+`read_lines()` | reads only a certain number of lines from the file
+`read_file()` | reads a complete file into a string
+`write_csv()` | writes data frame to CSV 
+
+A useful cheatsheet for the functions in the
+`readr` package can be found on RStudio's website: 
+
+![](https://www.rstudio.com/wp-content/uploads/2018/08/data-import.png)
+
+
+## Read in healthcare coverage data
+
+Let's try reading in some data. We will begin by
+reading in the `healthcare-coverage.csv` data. 
+
+If we want to see what the header of the file looks like, 
+we can use the `read_lines()` function to peak at the 
+first few lines. 
+
+```{r}
+read_lines(file = "../data/KFF/healthcare-coverage.csv", n_max = 10)
+```
+
+It looks like the first two lines are descriptive 
+and are not useful. We will tell R to skip reading 
+these in using the `skip` argument in 
+`read_csv()`. The third line looks like it contains the
+column names and starting on the fourth line is
+where the data starts. 
+
+```{r, message=FALSE}
+coverage <- read_csv("../data/KFF/healthcare-coverage.csv", 
+                     skip = 2, col_names = TRUE)
+head(coverage)
+tail(coverage)
+```
+
+It looks like we now have the right header, but
+there are a bunch of NAs in the end of the data 
+frame because most of it isn't useful data. 
+
+Let's take a closer look at the last 30 lines
+```{r}
+tail(coverage, n=30)
+```
+
+It looks like there is a line with a string 
+`Notes` in it and everything below that line
+should not be read in. We can use the `n_max` 
+argument here.
+
+```{r, message=FALSE}
+coverage <- read_csv("../data/KFF/healthcare-coverage.csv", 
+                     skip = 2, col_names = TRUE)
+coverage <- read_csv("../data/KFF/healthcare-coverage.csv", 
+                     skip = 2, col_names = TRUE,
+                     n_max  = which(coverage$Location == "Notes")-1)
+tail(coverage)
+```
+
+That's better! 
+
+## Read in healthcare spending data
+
+Now because we are also going to want to 
+use in `healthcare-spending.csv`, let's 
+read it in now. 
+
+```{r, message=FALSE}
+spending <- read_csv("../data/KFF/healthcare-spending.csv", 
+                     skip = 2, col_names = TRUE)
+spending <- read_csv("../data/KFF/healthcare-spending.csv", 
+                     skip = 2, col_names = TRUE,
+                     n_max  = which(spending$Location == "Notes")-1)
+tail(spending)
+```
+
+## Read in life expectancy data
+
+Now because we are also going to want to 
+use in `life-expectancy.csv`, let's 
+read it in now. 
+
+```{r, message=FALSE}
+life <- read_csv("../data/KFF/life-expectancy.csv", 
+                     skip = 2, col_names = TRUE)
+life <- read_csv("../data/KFF/life-expectancy.csv", 
+                     skip = 2, col_names = TRUE,
+                     n_max  = which(life$Location == "Sources")-1)
+tail(life)
+```
+
+## Take a `glimpse()` at your data
+
+One last thing in this section. 
+One way to look at our data would be to use 
+`head()` or `tail()`, as we just saw. 
+Another one you might have heard of is the
+`str()` function. One you might not have 
+heard of is the `glimpse()` function. It's
+used for a special type of object in R called 
+a `tibble`. Let's read the help file to learn
+more. 
+
+```{r, eval=FALSE}
+?tibble::tibble
+```
+
+It's kind of like `print()` where it shows you 
+columns running down the page. Let's try it out. 
+If we look at our data, say the `coverage` 
+data frame, we see that it is not _"tidy"_: 
+```{r}
+glimpse(coverage)
+```
+
+
+# Data Tidying
+
+A subset of the data analysis process can be thought
+about in the following way:
+
+```{r out.width = "95%", echo = FALSE}
+knitr::include_graphics("http://r4ds.had.co.nz/diagrams/data-science.png")
+```
+
+where each of these steps need their own 
+tools and software to complete. 
+
+After we import the data into R, if we are 
+going to take advantage of the _"tidyverse"_, 
+this means we need to _transform_ the data 
+into a form that is _"tidy"_. If you recall, 
+in _tidy_ data:
+
+* Each variable forms a column.
+* Each observation forms a row.
+* Each type of observational unit forms a table.
+
+For example, consider the following dataset: 
+
+![](https://github.com/datasciencelabs/2016/raw/master/lectures/wrangling/pics/stocks-by-company.png)
+
+Here:  
+
+* each row represents one company (row names are companies)
+* each column represent one time point
+* the stock prices are defined for each row/column pair
+
+Alternatively, a data set can be structured in the following way:
+
+* each row represents one time point (but no row names)
+* the first column defines the time variable and the last three columns contain the stock prices for three companies 
+
+![](https://github.com/datasciencelabs/2016/raw/master/lectures/wrangling/pics/stocks-by-time.png)
+
+In both cases, the data is the same, but the structure is 
+different. This can be  _frustrating_ to deal with as an 
+analyst because the meaning of the values (rows and columns)
+in the two data sets are different. Providing a standardized 
+way of organizing values within a data set would alleviate 
+a major portion of this frustration.  
+
+For motivation, a _tidy_ version of the stock data we 
+looked at above looks like this: (we'll learn how the
+functions work in just a moment)
+
+![](https://github.com/datasciencelabs/2016/raw/master/lectures/wrangling/pics/stocks-tidy.png)
+
+In this "tidy" data set, we have three columns representing 
+three variables (time, company name and stock price). 
+Every row represents contains one stock price from a 
+particular time and for a specific company. 
+
+If we consider our `coverage` dataframe, we see it 
+is also not in a tidy format. Each row contains information
+about the coverage level by `Location` across years and 
+types of coverage. 
+
+```{r}
+coverage[1:5, 1:5]
+```
+
+Now, let's use the `tidyr` R package to transform
+our data into a _tidy_ format. 
+
+## The `tidyr` R package
+
+[`tidyr`](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html)
+is an R package that transforms data sets to a tidy format. 
+
+This package is installed and loaded when you load 
+the `tidyverse` using `library(tidyverse)`. However, 
+you can also just load the library by itself. 
+
+```{r, message=FALSE}
+library(tidyr)
+```
+
+The main functions in `tidyr` are: 
+
+`tidyr` functions | Description
+------- | -------
+`gather()` | takes multiple columns, and gathers them into key-value pairs, making "wide" data longer
+`separate()` | turns a single character column into multiple columns, making "long" data wider
+
+We'll explore what it means to go between a "wide" and "long" 
+data format using `gather()` and `separate()` next. 
+
+A [`tidyr` cheatsheet](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf)
+for the functions in the `tidyr` package can be 
+found on RStudio's website: 
+
+## Convert healthcare coverage data to a tidy format
+
+Let's start by looking at the `gather()` help file
+
+```{r, eval=FALSE}
+?gather
+```
+
+This function gathers multiple columns and collapses them into new 
+*key-value* pairs. This transform data from _wide_ format into 
+a _long_  format. 
+
+* The `key` is the name of the _new_ column that you are creating which 
+contains the values of the column headings that you are gathering 
+* The `value` is the name of the _new_ column that will contain the values
+themselves
+* The third argument defines the columns to gather
+
+For example, here we create a column titled 
+`year_type` and `coverage`. We also want to keep 
+the `Location` column as it is because it also contains
+observational level data.
+
+```{r}
+coverage <- gather(coverage, "year_type", "tot_coverage", -Location)
+coverage
+```
+
+Now we see each row contains one observation. 
+Namely, a `Location`, a `year_type` and `coverage`. 
+It would be nice to separate out the information 
+in the `year_type` column into two columns. We will 
+explore how to do that in the Data Wrangling section
+below. For now let's learn more about the `tidyr` 
+package. 
+
+### Convert back to a wide format
+
+In contrast to *gathering* multiple columns into key-value pairs, we can 
+*spread* a key-value pair across multiple columns.  
+
+The function `spread()` does just that. It transforms data from a _long_
+format into a _wide_ format. 
+
+* The `key` is the name of the column in your data set that 
+contains the values of the column headings that you are spreading across 
+multiple columns
+* The `value` is the name of the column that contains the values for the 
+multiple columns
+
+
+```{r}
+spread(coverage, year_type, tot_coverage)
+```
+
+## Convert healthcare spending data to a tidy format
+
+Let's do the same for the `spending` data. In this 
+case I will use `year` and `spending` for
+the `key` and `value`. We also want to keep `Location`
+like before. 
+
+```{r}
+spending <- gather(spending, "year", "tot_spending", -Location)
+spending
+```
+
+# Data Wrangling
+
+In the real world, analyzing data rarely involves 
+data that can be easily imported and ready for 
+analysis. According to Wikipedia:
+
+> Data munging or data wrangling is loosely the process 
+of manually converting or mapping data from one "raw" 
+form into another format that allows for more convenient 
+consumption of the data with the help of semi-automated 
+tools.
+
+As you will see in class, one of the most 
+time-consuming aspects of the data analysis 
+process is "data wrangling". This is also 
+is a trendy term for 
+_cleaning up a messy data set_. 
+
+R provides incredibly powerful and flexible language 
+for data wrangling. However, the syntax is somewhat 
+hard to get used to. We will therefore introducing 
+a package that makes the syntax much more like 
+the English language. This package is `dplyr`. 
+
+## The `dplyr` R package
+
+[`dplyr`](http://cran.rstudio.com/web/packages/dplyr/vignettes/introduction.html) 
+is a powerful R-package to transform and summarize 
+tabular data with rows and columns. 
+
+The package contains a set of functions 
+(or "verbs") to perform common data manipulation
+operations such as filtering for rows, selecting 
+specific columns, re-ordering rows, adding new 
+columns and summarizing data. 
+
+In addition, `dplyr` contains a useful function to
+perform another common task which is the is the 
+"split-apply-combine" concept.  We will discuss 
+that in a little bit. 
+
+### How does it compare to using base functions R?
+
+If you are familiar with R, you are probably familiar 
+with base R functions such as `split()`, `subset()`, 
+`apply()`, `sapply()`, `lapply()`, `tapply()` and 
+`aggregate()`. Compared to base functions in R, the 
+functions in `dplyr` are easier to work with, are 
+more consistent in the syntax and are targeted for 
+data analysis around data frames instead of just vectors. 
+
+The important `dplyr` verbs to remember are: 
+
+`dplyr` verbs | Description
+--- | ---
+`select()` | select columns 
+`filter()` | filter rows
+`arrange()` | re-order or arrange rows
+`mutate()` | create new columns
+`summarize()` | summarize values
+`group_by()` | allows for group operations in the "split-apply-combine" concept
+
+
+
+### Pipe operator: %>%
+
+Before we go any futher, let's introduce the 
+pipe operator: `%>%`. In our `stocks` example,
+we briefly saw this symbol. It is called the
+pipe operator. `dplyr` imports
+this operator from another package 
+(`magrittr`)
+[see help file here](http://cran.r-project.org/web/packages/magrittr/vignettes/magrittr.html). 
+This operator allows you to pipe the output 
+from one function to the input of another
+function. Instead of nesting functions 
+(reading from the inside to the 
+outside), the idea of of piping is to 
+read the functions from left to right. 
+
+Now in `stocks` example, we pipe the `stocks`
+data frame to the function that will 
+gather multiple columns into key-value pairs. 
+
+![](https://github.com/datasciencelabs/2016/raw/master/lectures/wrangling/pics/stocks-tidy.png)
+
+
+### `dplyr` verbs in action
+
+First, let's separate the `year_type` column 
+in the `coverage` dataset to two columns:
+`year` and health coverage `type`. 
+
+To do this, we will use the `separate()` 
+function in the `tidyr` package. 
+
+**Note**: 
+
+* `separate()` = separate one column into multiple columns
+* `unite()` = unite multiple columns into one
+
+
+```{r}
+coverage %>% 
+  separate(year_type, sep="__", 
+           into=c("year", "type"))
+```
+
+We see that we now have two columns, except 
+the `year` column was converted to a character. 
+If we look at the help file `?separate`, we see
+we can use the `convert=TRUE` argument to 
+convert the character to an integer. 
+
+```{r}
+coverage <- 
+  coverage %>% 
+  separate(year_type, sep="__", 
+           into=c("year", "type"), 
+           convert = TRUE)
+coverage
+```
+
+Next, we see that the `tot_coverage` column is 
+also a character. Gah! 
+
+Let's fix that. We can use the `mutate_at()` 
+function to do this. We are asking R to take
+`tot_coverage` column and convert it to an
+integer and then replace the old column with 
+the new converted column 
+
+```{r}
+coverage <- 
+  coverage %>% 
+  mutate_at("tot_coverage", as.integer)
+```
+
+The `coverage` data looks good now. We see 
+that there are different `year`s and different 
+`types` of healthcare coverage. 
+
+#### Your turn
+
+What is the range of years and types of healthcare
+in the `coverage` dataset? 
+
+```{r}
+## add your code here
+
+```
+
+Next, we will look at the life expectancy
+(`life`) data. 
+
+```{r}
+life
+```
+
+The second column 
+has a long name with space in it. Let's rename
+it to something shorter with the `rename()` 
+function. 
+
+```{r}
+life <- 
+  life %>% 
+  rename(life_exp_years = `Life Expectancy at Birth (years)`)
+life
+```
+
+Finally, let's return to the `spending` data. 
+We see the `year` column has information that 
+we do not want. We only care about the year. 
+
+```{r}
+spending
+```
+
+Let's use the `separate()` function with `convert=TRUE` 
+to separate the `year` column into columns. Then, we 
+introduce another `dplyr` action verb: `select()`. 
+
+The two most basic functions are `select()` and 
+`filter()` which selects columns and filters 
+rows, respectively. 
+
+#### Selecting columns using `select()`
+
+In the `separate()` function, we create two
+new columns called `year` and `name`. Then, 
+we ask to return all the columns, except 
+`name`. To select all the columns *except* a 
+specific column, use the "-" (subtraction) operator 
+(also known as negative indexing). 
+
+```{r}
+spending <- 
+  spending %>% 
+  separate(year, sep="__", into=c("year", "name"), convert = TRUE) %>% 
+  select(-name)
+spending
+```
+
+The function `select()` is much more 
+powerful though. To select a range 
+of columns by name, use the ":" (colon) operator
+
+```{r}
+coverage %>% 
+  select(year:type)
+```
+
+To select all columns that start with the 
+character string "t", use the function `starts_with()`
+
+```{r}
+coverage %>% 
+  select(starts_with("t"))
+```
+
+Some additional options to select columns based 
+on a specific criteria include
+
+1. `ends_with()` = Select columns that end with 
+a character string
+2. `contains()` = Select columns that contain 
+a character string
+3. `matches()` = Select columns that match a 
+regular expression
+4. `one_of()` = Select columns names that are 
+from a group of names
+
+
+#### Selecting rows using `filter()`
+
+Let's say we want to know how many peopled 
+had health insurance coverage in Maryland? 
+
+First, we can filter the rows for years in 2007. 
+
+```{r}
+coverage %>% 
+  filter(Location == "Maryland")
+```
+
+**Note**: you can use the boolean operators 
+(e.g. `>`, `<`, `>=`, `<=`, `!=`, `%in%`) 
+to create logical tests.
+
+For example, if we wanted only years 
+after 2014, we can add a second criteria: 
+
+```{r}
+coverage %>% 
+  filter(Location == "Maryland", 
+         year > 2014)
+```
+
+#### Your turn
+
+Has the number of uninsured has
+increased or decreased in Maryland 
+between 2013 and 2016? 
+
+```{r}
+## add your code here
+
+```
+
+What happened between 2013 and 2014? 
+[Hint](https://en.wikipedia.org/wiki/Patient_Protection_and_Affordable_Care_Act)
+
+#### Arrange or re-order rows using `arrange()`
+
+Now, let's say we want to see which states has the To arrange (or re-order) rows by a particular 
+column such as the population, list the name of 
+the column you want to arrange the rows by
+
+```{r}
+coverage %>% 
+    arrange(tot_coverage)
+```
+
+
+#### Your turn 
+
+In 2016, what were the top three states with 
+the largest `Employer` type of healthcare 
+coverage? 
+
+**Hint**: use the `desc()` function inside of
+`arrange()` to order rows in a descending order. 
+
+```{r}
+## add your code here
+
+```
+
+# Mini-Case Study 1 
+
+For the last 20 mins of class, we will break 
+into groups and work on a mini-case study. 
+You can find the case study on the 
+[course website](https://jhu-advdatasci.github.io/2018/). 
