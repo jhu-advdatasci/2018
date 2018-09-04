@@ -16,4 +16,5 @@ Important links today:
 Assignments: 
 
 * Please fill out the [Fall 2018 Course Survey](https://goo.gl/forms/TVvaQ04xn7PO94P13) by September 14, 2018 at 11:59pm
-* Homework 0 is due September 14, 2018 at 11:59pm. 
+* Homework 0 is now available and is due **September 14, 2018 at 11:59pm**. 
+  * To access, sign up for [GitHub.com](http://github.com), read [GitHub Classroom for Students](https://github.com/jfiksel/github-classroom-for-students) and then click [https://classroom.github.com/a/AiFh2wzG](https://classroom.github.com/a/AiFh2wzG). 
