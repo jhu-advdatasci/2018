@@ -2,4 +2,12 @@
 title: Homework
 ---
 
-Coming soon!
+Homework assignments and solutions will be add here throughout the courses. 
+
+### Homework 0
+
+  * Due Friday, September 14, 2018 by 11:59pm
+  * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/hw0-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/hw0-assignment.Rmd))
+    * To access and submit assignment: [https://classroom.github.com/a/AiFh2wzG](https://classroom.github.com/a/AiFh2wzG)
+
+

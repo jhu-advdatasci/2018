@@ -1,0 +1,166 @@
+---
+title: "Homework 0: Welcome to Advanced Data Science!"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**This homework is due Friday September 14, 2016 at 11:59 PM. While we will not grade this assignment, we do require you to complete and submit the assignment as a test for submitting future homework assignments. When you have completed the assignment, knit the R Markdown, commit your changes and push to GitHub.**
+
+# Getting Setup
+
+Welcome to Advanced Data Science at Johns Hopkins Bloomberg School of Public Health! This course will focus on hands-on data analyses with a main objective of solving real-world problems. In this class, we will be using a variety of tools that will require some initial configuration. To ensure everything goes smoothly moving forward, we will setup the majority of those tools in this homework. While some of this will likely be dull, doing it now will enable us to do more exciting work in the weeks that follow without getting bogged down in further software configuration. 
+
+For more information about the course objectives, pre-requisites, course structure and the grading policy, see the [Syllabus](syllabus.html)
+
+
+### Slack
+
+We will use Slack to organize course discussions and questions. Go here to sign up: [https://join.slack.com/t/jhu-advdatasci/signup](https://join.slack.com/t/jhu-advdatasci/signup). Using your a jhu.edu or jhmi.edu email address, you should be able to sign up. If not, contact one of the TAs to ask to be added to the Slack team. 
+
+There are channels to ask questions and discuss the lectures, homework assignments, and final projects. As your peers ask questions, feel free to respond and answer the questions yourself, if you know the answer. The channels will be monitored by the TA and instructors, but we may not respond as fast as someone else in the class who may also be able to help you. We will also use Slack for all annoucments, so it is important that you are signed up. Feel free to ask questions during class, or anytime. 
+
+Once you are logged into the Slack team, introduce yourself to your classmates and course staff in the #general channel. Include your name/nickname, your affiliation, why you are taking this course, and tell us something interesting about yourself (e.g., an unusual hobby, past travels, or a cool project you did, etc.). Also tell us about your experience with analyzing data (if so, what types?). 
+
+### GitHub
+
+If you do not have a GitHub account, go to [GitHub.com](https://github.com) and sign up. 
+
+You can access all course material here: 
+
+* Course website: [https://jhu-advdatasci.github.io/2018](https://jhu-advdatasci.github.io/2018)
+* GitHub repository with all course material: [https://github.com/jhu-advdatasci/2018](https://github.com/jhu-advdatasci/2018)
+
+We will be using [GitHub in the Classroom](https://classroom.github.com/), which automates repository creation and access control, making it easy for instructors to distribute starter code and collect assignments on GitHub. Read through this [GitHub Classroom guide for students](https://github.com/jfiksel/github-classroom-for-students) to learn more about how we will be using GitHub in the course. 
+
+Why is this relevant to you? This allows you to easily access your homework assignments using git/GitHub. When you have completed the assignment, you will commit your changes and push them back to GitHub. **This is how you will submit your homework assignments**, so it is very important to test that you can access the homework and push your changes in this assignment. 
+
+We will cover more about this topic in the second lecture. 
+
+### DataCamp
+
+As part of a student in this course, you can have access to all DataCamp modules for free for the duration of this course. If you are interested in getting access, click Yes in the Fall 2018 Survey (see next section). If you click Yes, we will send you an invitation email. The use of DataCamp is optional, but a great resource to learn many things about analyzing data.
+
+
+### Fall 2018 Survey 
+
+Fill out this survey on Google: [https://goo.gl/forms/TVvaQ04xn7PO94P13](https://goo.gl/forms/TVvaQ04xn7PO94P13)
+
+
+# Programming expectations 
+
+### R 
+
+This course assumes knowledge of and experience working with the R programming language. There are many great tutorials for learning R including some listed on the [Resources](https://jhu-advdatasci.github.io/2018/resources.html) course page. 
+
+Install the latest version of R from [https://cran.r-project.org](https://cran.r-project.org). 
+
+### RStudio 
+
+Install the latest version of RStudio Desktop (Open Source Edition) from [https://www.rstudio.com/products/rstudio/download/#download](https://www.rstudio.com/products/rstudio/download/#download). 
+
+### Hello, R Markdown 
+
+This is an R Markdown document. It is based on _markdown_, a markup language that is widely used to generate html pages. You can learn more about markdown [here](https://www.markdowntutorial.com/). 
+
+The idea behind R Markdown is that it is _literate programming_, which weaves instructions, documentation and detailed comments in between machine executable code, producing a document that describes the program that is best for human understanding (Knuth 1984). Unlike a word processor, such as Microsoft Word, where you what you see is what you get, with R markdown you need to _compile_ the document into the final report. The R markdown document looks different than the final product. This seems like a disadvantage at first, but it is not at all because, for example, instead of producing plots and inserting them one by one into the word processing document, the plots are automatically added. 
+
+The reason we will use R Markdown in a data analysis course, is because it allows you to write reports, incorporating text and code into a single document. This is important because the final product of a data analysis is often a report. Many scientific publications can be thought of us a final report of a data analysis. The same is true for news articles based on data, an analysis report for your company, or lecture notes for a class on how to analyze data. The reports are often on paper or a PDF that includes a textual description of the finding along with some figures and tables resulting from the analysis. Imagine after you finish the analysis and the report, you are told that you were given the wrong dataset, You are sent you a new one and you are asked run the same analysis with this new dataset. Or what if you realize that a mistake was made and need to re-examine the code, fix the error and re-run the analysis? Or imagine that someone you are training wants to see the code and be able to reproduce the results to learn about the approach? Situations like the ones just described are actually quite common for a data scientist. 
+
+Read through the RStudio R Markdown tutorial here: [https://rmarkdown.rstudio.com/lesson-1.html](https://rmarkdown.rstudio.com/lesson-1.html). Make sure you are comfortable with [how to render an R Markdown document](https://rmarkdown.rstudio.com/lesson-2.html), [code chunks](https://rmarkdown.rstudio.com/lesson-3.html) and the [parameters](https://rmarkdown.rstudio.com/lesson-6.html) you can use for the code chunks. 
+
+### Installing R packages
+
+Next, we will install some packages that we'll need in the first few lectures. First, we will install the [tidyverse](https://www.tidyverse.org). 
+
+```{r, eval=FALSE}
+install.packages(tidyverse)
+```
+
+Notice, there is a parameter `eval=FALSE` in the code chunk above. If you knit this document, that code chunk will not be evaluated. However, you can execute the line of code in RStudio to install the set of R packages in the tidyverse. 
+
+```{r}
+library(tidyverse)
+```
+
+We can use the `sessionInfo()` function in the next code chunk to print out information in the current R session. 
+
+```{r}
+sessionInfo()
+```
+
+
+# Homework 0 Assignment
+
+![](https://imgs.xkcd.com/comics/monty_hall_2x.png)
+
+Here's a fun and perhaps surprising statistical riddle, and a good way to get some practice writing R functions.
+
+## The Monty Hall Problem
+
+In a gameshow, contestants try to guess which of 3 closed doors contain a cash prize (goats are behind the other two doors). Of course, the odds of choosing the correct door are 1 in 3. As a twist, the host of the show opens a door after a contestant makes his or her choice. This door is always one of the two the contestant did not pick, and is also always one of the goat doors (note that it is always possible to do this, since there are two goat doors). At this point, the contestant has the option of keeping his or her original choice, or swtiching to the other unopened door. The question is: is there any benefit to switching doors? The answer surprises many people who haven't heard the question before.
+
+We can answer the problem by running simulations in R. We'll do it in several parts.
+
+#### Problem 1
+
+First, write a function called `simulate_prizedoor(nsims)` with the argument `nsims` representing the number of simulations to run. The output should return a set of integers (1s, 2, 3s) representing hiding a prize behind door 1, door 2 and door 3. The length of the returned object should be `nsims`. This function will simulate the location of the prize in many games.
+
+```{r}
+## add your code here
+
+```
+
+#### Problem 2
+
+Next, write a function that simulates the contestant's guesses for `nsims` simulations. Call this function `simulate_guess()`. This function should return any strategy for guessing which door a prize is behind. This could be a random strategy, one that always guesses 2, whatever. Include the `nsims` as an argument of the function. The output should return a set of integers (1s, 2, 3s) representing the guess for the contest, whether the prize is behind door 1, door 2 or door 3. The length of the returned object should be `nsims`. 
+
+```{r}
+## add your code here 
+
+```
+
+#### Problem 3 
+
+Next, write a function, `goat_door()`, to simulate the opening of a "goat door" that doesn't contain the prize, and is different from the contestants guess. Here, there should be at least two arguments: one representing the set of integers for which is the prize door and a second representing the set of integers for which door the contestant guessed in each simulation. 
+
+```{r}
+## add your code here
+
+```
+
+#### Problem 4 
+
+Write a function, `switch_guess()`, that represents the strategy of always switching a guess after the goat door is opened. 
+
+```{r}
+## add your code here
+
+```
+
+#### Problem 5 
+
+Calculate the percent of correct guesses out of `nsims` using the strategy of switching and the strategy of staying with the first choice made. 
+
+```{r}
+## add code here 
+
+```
+
+Most people find this result surprising the first time they hear about the game. Let's explore this a bit more. 
+
+#### Problem 6
+
+Generalize the functions to allow for more than 3 doors. This will help us understand why opening a goat door affects the odds of winning. For example, let's say there are 100 doors in the game now with still only one prize and 99 doors with goats behind them. You pick one door and the host opens 98 other doors after you made your initial selection. Would you want to keep your first pick or switch? 
+
+```{r}
+## add code here 
+
+```
+
+What's going on here? 
+
+#### Add your explanation below
+
