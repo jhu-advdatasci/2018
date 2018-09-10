@@ -389,7 +389,7 @@ Now that you understand the basics, try doing the following on your own GitHub a
 
 Also, you can check out [GitHub Bootcamp](https://help.github.com/categories/bootcamp/) for more help. 
 
-## Fork and clone the `jhu-advdatasci/2018` repository on GitHub
+## Clone the `jhu-advdatasci/2018` repository on GitHub
 
 The lectures and homework assignments for this course are housed in the 
 [`jhu-advdatasci/2018` repository on GitHub](https://github.com/jhu-advdatasci/2018). 
