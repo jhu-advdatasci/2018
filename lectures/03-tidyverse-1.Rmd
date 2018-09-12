@@ -48,9 +48,8 @@ a set of R packages that we will use to analyze the data.
 # Welcome to the "Tidyverse"
 
 The [tidyverse](https://www.tidyverse.org) is _"an opinionated 
-collection of R packages designed for data science". All packages 
-share an underlying philosophy and common Application Programming
-Interface (APIs)_.
+collection of R packages designed for data science. All packages 
+share an underlying philosophy and common APIs."_ 
 
 Another way of putting it is that it's a set of packages 
 that are useful specifically for data manipulation, 
@@ -58,7 +57,10 @@ exploration and visualization with a common philosphy.
 
 ## What is this common philosphy? 
 
-The common philosphy is called _"tidy"_ data. 
+The common philosphy is called _"tidy"_ data. It is 
+a standard way of mapping the meaning of a dataset
+to its structure.
+
 In _tidy_ data:
 
 * Each variable forms a column.
@@ -77,17 +79,11 @@ considered "tidy".
 knitr::include_graphics("http://r4ds.had.co.nz/images/tidy-9.png")
 ```
 
-Working with tidy data is useful because 
-
-* it creates a structured way of organizing data 
-values within a data set. 
-* it makes the data analysis process more efficient 
-and simplifies the development of data analysis 
-tools that work together. Will learn 
-more about this later. 
-* you can focus on the problem you are 
-investigating, rather than the uninteresting 
-logistics of data 
+Working with tidy data is useful because it creates a structured way of
+organizing data values within a data set. This makes the data analysis 
+process more efficient and simplifies the development of data analysis tools
+that work together. In this way, you can focus on the problem you are
+investigating, rather than the uninteresting logistics of data.  
 
 ## What is in the `tidyverse`? 
 
@@ -584,6 +580,7 @@ in the `coverage` dataset?
 ```{r}
 ## add your code here
 
+table(coverage$type, coverage$year)
 ```
 
 Next, we will look at the life expectancy
@@ -702,6 +699,9 @@ between 2013 and 2016?
 ```{r}
 ## add your code here
 
+coverage %>% 
+  filter(Location == "Maryland", 
+         type == "Uninsured")
 ```
 
 What happened between 2013 and 2014? 
@@ -731,6 +731,10 @@ coverage?
 ```{r}
 ## add your code here
 
+coverage %>% 
+  filter(Location != "United States", year == 2016, type == "Employer") %>% 
+  arrange(desc(tot_coverage)) %>% 
+  head(n=3)
 ```
 
 # Mini-Case Study 1 
