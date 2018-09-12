@@ -91,7 +91,7 @@ knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/po
 
 Duke finally started an internal review of the accusations.
 
-In 2012, The Cancer Letter reported that [Anil Potti had falsified parts of his resume](https://cancerletter.com/articles/20131204_3/) stating he was a Rhodes scholar, but was not. The [New York Times](http://www.nytimes.com/2011/07/08/health/research/08genes.html) wrote several articles on it. Keith and Kevin were [interviewed on 60 Minutes](https://www.youtube.com/watch?v=W5sZTNPMQRM). 
+In 2010, The Cancer Letter reported that [Anil Potti had falsified parts of his resume](https://cancerletter.com/articles/20131204_3/) stating he was a Rhodes scholar, but was not. The [New York Times](http://www.nytimes.com/2011/07/08/health/research/08genes.html) wrote several articles on it. Keith and Kevin were [interviewed on 60 Minutes](https://www.youtube.com/watch?v=W5sZTNPMQRM). 
 
 In the end, Duke settled with families of eight cancer patients who participated in clinical trials. Four papers were retracted. Duke shut down three trials using the results. Potti resigned from Duke. You can read about how all the 
 [events unfolded here](http://www.nature.com/news/2011/110111/full/469139a/box/1.html). 
