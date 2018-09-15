@@ -11,3 +11,10 @@ Homework assignments and solutions will be add here throughout the courses.
     * To access and submit assignment: [https://classroom.github.com/a/AiFh2wzG](https://classroom.github.com/a/AiFh2wzG)
 
 
+### Homework 1
+
+  * Due Friday, September 28, 2018 by 11:59pm
+  * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/hw1-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/hw1-assignment.Rmd))
+    * To access and submit assignment: [https://classroom.github.com/a/KkRjeZ8J](https://classroom.github.com/a/KkRjeZ8J)
+
+
