@@ -1,0 +1,638 @@
+---
+title: US Healthcare Spending and Coverage
+date: Sept 17, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Motivation 
+
+In the last lecture, we were analyzing health
+care data in the United States. We were
+exploring the following questions: 
+
+1. Is there a relationship between healthcare coverage and healthcare spending in the United States? 
+2. Which US states spend the most and which spend the least on healthcare? How does the spending distribution change across geographic regions in the United States?
+3. How do healthcare coverage and spending relate to life expectancy? 
+
+## Healthcare data
+The data is from the [Henry J Kaiser Family Foundation (KFF)](https://www.kff.org). 
+
+* [Health Insurance Coverage of the Total Population](https://www.kff.org/other/state-indicator/total-population/) - Includes years 2013-2016
+* [Health Care Expenditures by State of Residence (in millions)](https://www.kff.org/other/state-indicator/health-care-expenditures-by-state-of-residence-in-millions/) - Includes years 1991-2014
+* [Life Expectancy at Birth (in years)](https://www.kff.org/other/state-indicator/life-expectancy)
+
+## Re-cap from last time
+
+Let's recall what we did before: 
+
+Load in the `tidyverse` of R package
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+Read in the datasets with the `readr` R package
+```{r, message=FALSE, warning=FALSE}
+coverage <- read_csv("../data/KFF/healthcare-coverage.csv", 
+                     skip = 2, col_names = TRUE)
+coverage <- read_csv("../data/KFF/healthcare-coverage.csv", 
+                     skip = 2, col_names = TRUE,
+                     n_max  = which(coverage$Location == "Notes")-1)
+spending <- read_csv("../data/KFF/healthcare-spending.csv", 
+                     skip = 2, col_names = TRUE)
+spending <- read_csv("../data/KFF/healthcare-spending.csv", 
+                     skip = 2, col_names = TRUE,
+                     n_max  = which(spending$Location == "Notes")-1)
+life <- read_csv("../data/KFF/life-expectancy.csv", 
+                     skip = 2, col_names = TRUE)
+life <- read_csv("../data/KFF/life-expectancy.csv", 
+                     skip = 2, col_names = TRUE,
+                     n_max  = which(life$Location == "Sources")-1)
+```
+
+Convert the `coverage` and `spending` datasets 
+from _wide_ to _long_ formats using the `tidyr` 
+R package
+```{r, message=FALSE, warning=FALSE}
+coverage <- gather(coverage, "year_type", "tot_coverage", -Location)
+spending <- gather(spending, "year", "tot_spending", -Location)
+```
+
+Wrangle the datasets using some `dplyr` action verbs
+```{r, message=FALSE, warning=FALSE}
+coverage <- 
+  coverage %>% 
+  separate(year_type, sep="__", into=c("year", "type"), convert = TRUE) %>%
+  mutate_at("tot_coverage", as.integer)
+
+spending <- 
+  spending %>% 
+  separate(year, sep="__", into=c("year", "name"), convert = TRUE) %>% 
+  select(-name)
+
+life <- 
+  life %>% 
+  rename(life_exp_years = `Life Expectancy at Birth (years)`)
+```
+
+Now we will continue to learn more about data
+wrangling using the `dplyr` package, including 
+how to join two datasets together, how to summarize
+columns of data, and how to apply group operations 
+using the "split-apply-combine" concept. 
+
+We will also start an introduction to the 
+`ggplot2` package for data visualization. 
+
+# Data Wrangling
+
+Before we dive back into data wrangling with `dplyr`, 
+it would be nice add some information about each state. 
+Namely, the state abbreviation and state region 
+(i.e. north, south, etc). 
+
+For this we use the 
+[state](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/state.html)
+dataset in the `datasets` R package. 
+
+Before we begin, let's look at what states are there: 
+
+```{r}
+unique(coverage$Location)
+```
+
+We see there are more than 50 states because 
+"United States" and "District of Columbia" 
+are both included. 
+
+Let's look what states are inside the `state` dataset. 
+```{r}
+library(datasets)
+data(state)
+unique(state.name)
+```
+
+Ah, ok. So let's start by dealing with
+DC as a special case. 
+
+```{r}
+state.abb <- c(state.abb, "DC")
+state.region <- as.factor(c(as.character(state.region), "South"))
+state.name <- c(state.name, "District of Columbia")
+coverage$abb <- state.abb[match(coverage$Location, state.name)]
+coverage$region <- state.region[match(coverage$Location, state.name)]
+
+coverage
+```
+
+We will deal with the "United States" in
+the next section. 
+
+## The `dplyr` R package
+
+### Join two datasets together
+
+Up until now, we have been working with three
+datasets `coverage`, `spending`, and `life` 
+separtely. Next, we will combine these together. 
+
+If we want to combine, say, `coverage` and `spending` 
+together, we have to decide a few things. Both 
+share a `Location` column and a `year` column. 
+However, the range of `years` is different between
+datasets. 
+
+```{r}
+table(coverage$year)
+table(spending$year)
+```
+
+Do we want a dataset with all the years available
+or only a portion of it? Because there is spending
+information from 1991-2014, 
+and coverage information from 2013-2016.
+
+`dplyr` has a list of `join` functions that are 
+useful to combine datasets. To read more about them, 
+Jenny Bryan has created a nice 
+[cheatsheet](http://stat545.com/bit001_dplyr-cheatsheet.html). 
+
+If we look at the help file
+```{r}
+?dplyr::join
+```
+
+We see there are several options for us to pick from. 
+Let's try one out. We'll start with `left_join()`
+and see what that does. 
+
+```{r}
+hc <- left_join(coverage, spending, by = c("Location", "year"))
+head(hc)
+tail(hc)
+```
+
+What did it do? We see that the new `hc` dataset
+includes all the years from 2013-2016 (as that 
+is the range of years in `coverage`), but because
+the `spending` dataset only goes to 2014, the 
+`tot_spending` is reported as NA for years 2015 and
+2016. 
+
+What about a `right_join()`? 
+```{r}
+hc <- right_join(coverage, spending, by = c("Location", "year"))
+head(hc)
+tail(hc)
+```
+
+Here, we see every row in the spending dataset is 
+there, but with NAs for the years that there was no 
+coverage data. 
+
+There is also a `full_join()` and 
+`inner_join()`. If we want the intersection of 
+`years` from `coverage` and `spending` (meaning only 
+2013 and 2014), we should use `inner_join()`. 
+
+```{r}
+hc <- inner_join(coverage, spending, by = c("Location", "year"))
+head(hc)
+tail(hc)
+```
+
+Yes, that's what we want! 
+
+Next, let's combine our new `hc` dataset 
+with the `life` dataset.
+```{r}
+colnames(hc)
+colnames(life)
+```
+
+In this case, 
+the only column variable that
+is shared between these two is the `Location` 
+column. So we can use 
+
+```{r}
+hc <- left_join(hc, life, by = c("Location"))
+hc
+```
+
+Finally, if we are only interested in looking at US 
+states, we can remove the rows corresponding to 
+the `Location == "United States"`
+
+```{r}
+hc <- hc %>% 
+  filter(Location != "United States")
+```
+
+Another problem is that inside our `hc` 
+dataset, we have seen there are 
+multiple `types` of healthcare coverage
+
+```{r}
+table(hc$type)
+```
+
+The `total` type is not really a formal type of
+healthcare coverage. It really represents just 
+the total number of people in the state. This is 
+useful information and we can include it as a 
+column called `tot_pop`. How can we do this? 
+
+Well, one way would be to use the `join` functions
+again in `dplyr`. 
+
+```{r}
+pop <- hc %>% 
+  filter(type == "Total") %>% 
+  select(Location, year, tot_coverage)
+pop
+
+hc <- hc %>% 
+  filter(type != "Total") %>% 
+  left_join(pop, by = c("Location", "year")) %>% 
+  rename(tot_coverage = tot_coverage.x, tot_pop = tot_coverage.y)
+hc
+```
+
+We can check to make sure that the `total`
+is no longer listed as a `type` of healthcare
+coverage. 
+
+```{r}
+table(hc$type)
+```
+
+We are now ready to try answering our first 
+question that we asked: 
+
+> 1. Is there a relationship between healthcare coverage and healthcare spending in the United States?
+
+Let's pick out the `type==Employer` 
+and `year==2013`. 
+
+```{r}
+hc.employer.2013 <- hc %>%
+  filter(type == "Employer", year == "2013")
+plot(hc.employer.2013$tot_spending, 
+     hc.employer.2013$tot_coverage, log = "xy", 
+     xlab = "spending", ylab = "coverage")
+```
+
+We see there is a strong relationship. However, 
+we also see that healthcare coverage and spending 
+is also strongly related to population size 
+
+```{r, fig.width=10, fig.height=4}
+par(mfrow=c(1,2))
+plot(hc.employer.2013$tot_pop, 
+     hc.employer.2013$tot_coverage, log = "xy", 
+     xlab = "population size", ylab = "coverage")
+plot(hc.employer.2013$tot_pop, 
+     hc.employer.2013$tot_spending, log = "xy", 
+     xlab = "population size", ylab = "spending")
+```
+
+This means we need to take into account the 
+population size of each state when we are 
+comparing the heathcare coverage and spending. 
+
+### Add columns using `mutate()`
+
+Instead of the absolute number of people who 
+are covered (`tot_coverage`), we will calculate
+the proportion of people who are coverage in 
+each state, year and type. 
+
+For this, we will use the `mutate()` function 
+in `dplyr`. 
+
+```{r}
+hc <- hc %>% 
+    mutate(prop_coverage = tot_coverage/tot_pop) 
+hc
+```
+
+We need to add another column to our dataset.
+We will add the spending per capita (or spending 
+per person) in dollars and name this column 
+`spending_capita`. 
+
+How we will do this?
+
+The `tot_spending` column is reported 
+in millions (1e6). Therefore, to calculate 
+`spending_capita` we will need to adjust for this
+scaling factor to report it on the original scale
+(just dollars) and then divide by `tot_pop`.
+
+```{r}
+hc <- hc %>% 
+    mutate(spending_capita = (tot_spending*1e6) / tot_pop) 
+hc %>% select(prop_coverage, spending_capita)
+```
+
+Now we are ready to go back to our first question
+
+> 1. Is there a relationship between healthcare coverage and healthcare spending in the United States? 
+
+```{r}
+hc.employer.2013 <- hc %>%
+  filter(type == "Employer", year == "2013")
+plot(hc.employer.2013$spending_capita, 
+     hc.employer.2013$prop_coverage, log = "xy", 
+     xlab = "spending per capita", 
+     ylab = "proportion of Employer coverage")
+```
+
+Yes, it looks like there is a relationship for 
+`Employer` healthcare coverage in 2013. 
+
+We will continue to explore the other
+types of coverages later on. For now, we 
+get back to to learning more action verbs 
+in `dplyr`. 
+
+Our second question that we were interested 
+in was: 
+
+> 2. Which US states spend the most and which spend the least on healthcare? How does the spending distribution change across geographic regions in the United States?
+
+To answer these questions, we need to learn how 
+to calculate summary statistics in our data. 
+
+### Create summaries of columns using `summarise()`
+
+The `summarise()` function in `dplyr` 
+will create summary statistics for a given 
+column in the data frame 
+such as finding the max, min, average. 
+For example, to compute the average spending 
+per capita, we can apply the `mean()` function 
+to the column `spending_captia` and call the 
+summary value `avg_spending_capita`. 
+
+```{r}
+hc %>% 
+  summarise(avg_spending_capita = mean(spending_capita))
+```
+
+There are many other summary statistics you 
+could consider such `sd()`, `min()`, `median()`, 
+`mean()`, `sum()`, `n()` (returns the length of vector), 
+`first()` (returns first value in vector), 
+`last()` (returns last value in vector) and 
+`n_distinct()` (number of distinct values in vector). 
+
+Also note, this is the average across all states,
+and all years. This is not very informative. 
+
+If you recall, our question asked about 
+_which states_ spent the most, so we want 
+an average spending per capita for each state. 
+
+For this, we need to introduc another function in 
+`dplyr` called `group_by()`. 
+
+### Group operations using `group_by()`
+
+The `group_by()` verb is and incredibly powerful
+function in `dplyr`. As we mentioned before
+it's related to concept of "split-apply-combine". 
+
+In our example above, we want to split the data 
+frame by some variable (e.g. `Location`), 
+apply a function to the individual 
+data frames (`mean`) and then combine the output
+back into a summary data frame. 
+
+Let's see how that would look
+
+```{r}
+hc %>% 
+  group_by(Location) %>%
+  summarise(avg_spending_capita = mean(spending_capita))
+```
+
+That's better. Here we are averaging across the
+years 2013 and 2014. 
+
+#### Your turn 
+
+What are the top 3 states that have the largest 
+average spending per capita? What about the top 
+3 states with the smallest average spending 
+per capita? 
+
+```{r}
+## add your code here
+
+```
+
+How does the spending distribution change across 
+geographic regions in the United States? 
+
+**Hint**: Calculate the mean and standard deviation of
+spending per capita for each geographic region in the US. 
+
+```{r}
+## your code here 
+
+```
+
+Another way to visualize distributions is to use boxplots. 
+
+Create four boxplots represening the spending per capita 
+distribution for each of the four regions using 
+the `boxplot()` function in R.
+
+```{r}
+## add your code here
+
+```
+
+Now that we have our data in a `tidy` format, next, 
+we will learn about how to do this using the 
+`ggplot2` R package in the `tidyverse`. 
+
+# Data Visualization
+
+As you have already seen, there are many functions available
+in base R that can create plots (e.g. `plot()`, `boxplot()`). 
+Others include: `hist()`, `qqplot()`, etc. These 
+functions are great because they come with a basic installation 
+of R and can be quite powerful when you need a quick visualization 
+of something when you are exploring data. 
+
+We are choosing to introduce `ggplot2` because, in our 
+opinion, it's one of the simplest ways for beginners to 
+create relatively complicated plots that are intuitive 
+and aesthically pleasing. 
+
+## The `ggplot2` R package
+
+The reasons [`ggplot2`](http://ggplot2.tidyverse.org) 
+is generally intuitive for beginners is the use of 
+[grammar of graphics](http://vita.had.co.nz/papers/layered-grammar.html) 
+or the `gg` in `ggplot2`. The idea is that you can construct
+many sentences by learning just a few nouns, adjectives,
+and verbs. There are specific "words" that we will need to 
+learn and once we do, you will be able to create 
+(or "write") hundreds of different plots. 
+
+The critical part to making graphics using `ggplot2` is the 
+data needs to be in a _tidy_ format. Given that we have 
+just spend the last two lectures learning about how to 
+work with _tidy_ data, we are primed to take 
+advantage of all that `ggplot2` has to offer! 
+
+We will show how it's easy to pipe _tidy_ data
+(output) as input to other functions that creates
+plots. This all works because we are working 
+within the _tidyverse_. 
+
+## What is the `ggplot()` function? 
+
+As explained by Hadley Wickham: 
+
+> the grammar tells us that a statistical graphic is a mapping from data to aesthetic attributes (colour, shape, size) of geometric objects (points, lines, bars). The plot may also contain statistical transformations of the data and is drawn on a specific coordinates system.
+
+### `ggplot2` Terminology 
+* **ggplot** - the main function where you specify the data set and variables to plot (this is where we define the `x` and
+`y` variable names)
+* **geoms** - geometric objects
+    * e.g. `geom_point()`, `geom_bar()`, `geom_line()`, `geom_histogram()`
+* **aes** - aesthetics
+    * shape, transparency, color, fill, linetype
+* **scales** - define how your data will be plotted
+    * continuous, discrete, log, etc
+
+There are three ways to initialize a `ggplot()` object. 
+
+An empty ggplot object
+```{r}
+p <- ggplot()         
+```
+
+A ggplot object associated with a dataset
+```{r}
+p <- hc %>% 
+      filter(year==2014) %>% 
+      ggplot()
+```
+or a ggplot object with a dataset and `x` and `y` defined
+
+```{r}
+p <- hc %>% 
+      filter(year==2014) %>% 
+      ggplot(aes(x = spending_capita, y = prop_coverage))
+```
+
+```{r, eval = FALSE}
+p
+```
+
+### Creating your first `ggplot()`
+
+The function `aes()` is an aesthetic mapping 
+function inside the `ggplot()` object. We 
+use this function to specify plot attributes 
+(e.g. `x` and `y` variable names) that 
+will not change as we add more layers.  
+
+Anything that goes in the `ggplot()` object becomes
+a global setting. From there, we use the `geom`
+objects to add more layers to the base `ggplot()` 
+object. These will define what we are interested in 
+illustrating using the data.  
+
+If you recall, our first question that we were
+interested in was 
+
+> 1. Is there a relationship between healthcare coverage and healthcare spending in the United States?
+
+Before, we were using base R to create something
+like this: 
+
+```{r}
+hc.employer.2013 <- hc %>% 
+  filter(type == "Employer", year == "2013")
+
+plot(hc.employer.2013$spending_capita, 
+     hc.employer.2013$prop_coverage, 
+     xlab = "spending per capita", 
+     ylab = "coverage proportion")
+```
+
+Let's  re-create this plot with `ggplot2` 
+using the `geom_point()` geometry. 
+
+```{r}
+p <- hc %>%
+  filter(type == "Employer", year == "2013") %>% 
+  ggplot(aes(x = spending_capita, y = prop_coverage)) 
+p + geom_point() + 
+  xlab("spending per capita") + 
+  ylab("coverage proportion")
+```
+
+We used the `xlab()` and `ylab()` functions
+in `ggplot2` to specify the x-axis and y-axis
+labels. 
+
+**Note**, we do not have to assign (`<-`) the plot 
+to anything: 
+
+```{r}
+hc %>%
+  filter(type == "Employer", year == "2013") %>% 
+  ggplot(aes(x = spending_capita, y = prop_coverage)) + 
+  geom_point() + 
+  xlab("spending per capita") + 
+  ylab("coverage proportion")
+```
+
+
+It's also simple to fit a linear regression model 
+and plot it on top of scatter plot using the 
+`geom_smooth()` (or `stat_smooth()`) functions. 
+
+```{r}
+hc %>%
+  filter(type == "Employer", year == "2013") %>% 
+  ggplot(aes(x = spending_capita, y = prop_coverage)) + 
+  geom_point() + 
+  xlab("spending per capita") + 
+  ylab("coverage proportion") + 
+  geom_smooth(method = "lm", col = "red")
+```
+
+The standard error bounds are computed and included 
+in the plot. 
+
+In the next lecture, we will explore more of `ggplot2`'s 
+capabilities and (hopefully) finally answer the three 
+questions we originally asked. 
+
+### `ggplot2` cheatsheet
+
+<img src="https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf" align="middle" width="700">
+
+
+
+
