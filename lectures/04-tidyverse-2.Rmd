@@ -442,6 +442,19 @@ per capita?
 ```{r}
 ## add your code here
 
+# smallest 
+hc %>% 
+  group_by(Location) %>%
+  summarise(avg_spending_capita = mean(spending_capita)) %>% 
+  arrange(avg_spending_capita) %>% 
+  head(n=3)
+
+# largest 
+hc %>% 
+  group_by(Location) %>%
+  summarise(avg_spending_capita = mean(spending_capita)) %>% 
+  arrange(desc(avg_spending_capita)) %>% 
+  head(n=3)
 ```
 
 How does the spending distribution change across 
@@ -453,6 +466,10 @@ spending per capita for each geographic region in the US.
 ```{r}
 ## your code here 
 
+hc %>% 
+  group_by(region) %>%
+  summarise(avg_spending_capita = mean(spending_capita), 
+            sd_spending_capita = sd(spending_capita))
 ```
 
 Another way to visualize distributions is to use boxplots. 
@@ -464,6 +481,7 @@ the `boxplot()` function in R.
 ```{r}
 ## add your code here
 
+boxplot(hc$spending_capita ~ hc$region)
 ```
 
 Now that we have our data in a `tidy` format, next, 
