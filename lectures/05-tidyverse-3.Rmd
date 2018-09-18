@@ -1,0 +1,393 @@
+---
+title: US Healthcare Spending and Coverage
+date: Sept 19, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Motivation 
+
+In the last two lectures, we were analyzing health
+care data in the United States. We were
+exploring the following questions: 
+
+1. Is there a relationship between healthcare coverage and healthcare spending in the United States? 
+2. Which US states spend the most and which spend the least on healthcare? How does the spending distribution change across geographic regions in the United States?
+3. How do healthcare coverage and spending relate to life expectancy? 
+
+The data is from the [Henry J Kaiser Family Foundation (KFF)](https://www.kff.org). 
+
+* [Health Insurance Coverage of the Total Population](https://www.kff.org/other/state-indicator/total-population/) - Includes years 2013-2016
+* [Health Care Expenditures by State of Residence (in millions)](https://www.kff.org/other/state-indicator/health-care-expenditures-by-state-of-residence-in-millions/) - Includes years 1991-2014
+* [Life Expectancy at Birth (in years)](https://www.kff.org/other/state-indicator/life-expectancy)
+
+Let's recall what we did before: 
+
+Load in the `tidyverse` of R package
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+Read in the datasets with the `readr` R package
+```{r, message=FALSE, warning=FALSE}
+coverage <- read_csv("../data/KFF/healthcare-coverage.csv", 
+                     skip = 2, col_names = TRUE)
+coverage <- read_csv("../data/KFF/healthcare-coverage.csv", 
+                     skip = 2, col_names = TRUE,
+                     n_max  = which(coverage$Location == "Notes")-1)
+spending <- read_csv("../data/KFF/healthcare-spending.csv", 
+                     skip = 2, col_names = TRUE)
+spending <- read_csv("../data/KFF/healthcare-spending.csv", 
+                     skip = 2, col_names = TRUE,
+                     n_max  = which(spending$Location == "Notes")-1)
+life <- read_csv("../data/KFF/life-expectancy.csv", 
+                     skip = 2, col_names = TRUE)
+life <- read_csv("../data/KFF/life-expectancy.csv", 
+                     skip = 2, col_names = TRUE,
+                     n_max  = which(life$Location == "Sources")-1)
+```
+
+Convert the `coverage` and `spending` datasets 
+from _wide_ to _long_ formats using the `tidyr` 
+R package
+```{r, message=FALSE, warning=FALSE}
+coverage <- gather(coverage, "year_type", "tot_coverage", -Location)
+spending <- gather(spending, "year", "tot_spending", -Location)
+```
+
+Wrangle the datasets using some `dplyr` action verbs
+```{r, message=FALSE, warning=FALSE}
+coverage <- 
+  coverage %>% 
+  separate(year_type, sep="__", into=c("year", "type"), convert = TRUE) %>%
+  mutate_at("tot_coverage", as.integer)
+
+spending <- 
+  spending %>% 
+  separate(year, sep="__", into=c("year", "name"), convert = TRUE) %>% 
+  select(-name)
+
+life <- 
+  life %>% 
+  rename(life_exp_years = `Life Expectancy at Birth (years)`)
+```
+
+Add abbreviation and region information to the 
+`coverage` dataset
+
+```{r}
+library(datasets)
+data(state)
+unique(state.name)
+
+state.abb <- c(state.abb, "DC")
+state.region <- as.factor(c(as.character(state.region), "South"))
+state.name <- c(state.name, "District of Columbia")
+coverage$abb <- state.abb[match(coverage$Location, state.name)]
+coverage$region <- state.region[match(coverage$Location, state.name)]
+```
+
+
+Join the datasets together
+```{r, message=FALSE, warning=FALSE}
+hc <- inner_join(coverage, spending, by = c("Location", "year"))
+hc <- left_join(hc, life, by = c("Location"))
+hc <- hc %>% filter(Location != "United States")
+pop <- hc %>% 
+  filter(type == "Total") %>% select(Location, year, tot_coverage)
+hc <- hc %>% 
+  filter(type != "Total") %>% 
+  left_join(pop, by = c("Location", "year")) %>% 
+  rename(tot_coverage = tot_coverage.x, tot_pop = tot_coverage.y)
+```
+
+Add created two new columns `prop_coverage` and 
+`spending_capita`
+
+```{r}
+hc <- hc %>% 
+    mutate(prop_coverage = tot_coverage/tot_pop,
+           spending_capita = (tot_spending*1e6) / tot_pop) 
+hc
+```
+
+Let's learn a little bit more about `ggplot2` to 
+answer those questions using
+the tools we have learned in the last two lectures 
+
+# Data Visualization
+
+## The `ggplot2` R package
+
+In the previous lecture, we learned about 
+
+1. the main `ggplot()` function
+2. aesthic mappings or or _aes_ (connects the data we see on the graph; used as input to the geometry functions)
+3. geometry functions or _geoms_ (adding layers on top of the `ggplot()` object)
+4. scales or how the data will be plotted (e.g. continuous, discrete, log, etc)
+
+### Creating scatter plots using `geom_point()`
+
+We also created our first `ggplot()` object to explore 
+the question 
+
+> 1. Is there a relationship between healthcare coverage and healthcare spending in the United States? 
+
+```{r}
+hc %>%
+  filter(type == "Employer", year == "2013") %>% 
+  ggplot(aes(x = spending_capita, y = prop_coverage)) + 
+  geom_point() + 
+  xlab("spending per capita") + 
+  ylab("coverage proportion") + 
+  geom_smooth(method = "lm", col = "red")
+```
+
+It would be nice to know which state is represented
+by which state. For this, we will introduce another 
+_geom_ called `geom_text()`. 
+
+### Adding layers of text using `geom_text()`
+
+In our dataset, we have information about the 
+abbreviation for each state. We could add the 
+abbreviations for each state next to the point on 
+the plot to assess which states have a higher or
+lower coverage for a given amount of money they 
+spend per capita. 
+
+```{r}
+hc %>% 
+  filter(type == "Employer", year == "2013") %>% 
+  ggplot(aes(x = spending_capita, y = prop_coverage)) + 
+  geom_point() + 
+  xlab("spending per capita") + 
+  ylab("coverage proportion") + 
+  geom_smooth(method = "lm", col = "red") + 
+  geom_text(aes(label=abb))
+```
+
+That is cool, but it would be even better if we 
+could _nudge_ the text over a bit. Let's look at 
+the help file for `geom_text()`: 
+
+```{r, eval=FALSE}
+?ggplot2::geom_text
+```
+
+We see there is an argument called 
+`nudge_x` and `nudge_y`. We can use these 
+to _nudge_ the text over a bit so the 
+text is not directly on top of the points. 
+
+```{r}
+hc %>% 
+  filter(type == "Employer", year == "2013") %>% 
+  ggplot(aes(x = spending_capita, y = prop_coverage)) + 
+  geom_point() + 
+  xlab("spending per capita") + 
+  ylab("coverage proportion") + 
+  geom_smooth(method = "lm", col = "red") + 
+  geom_text(aes(label=abb), nudge_x = 150)
+```
+
+#### Your turn 
+
+Color each point (or state) by what region 
+they are from. 
+
+```{r}
+## add your code here
+
+```
+
+
+### faceting across a variable
+
+Ok, getting back to our original question: 
+
+> 1. Is there a relationship between healthcare coverage and healthcare spending in the United States? 
+
+We saw there was a positive relationship,
+but this was only for one type of healthcare 
+coverage (`Employer`) and one year. 
+What about the other types? 
+
+For this, we will introduce `facets`. The idea 
+of _faceting_ is to stratify the data by some 
+variable and make the same plot for each strata. 
+
+For example, if we wanted to _facet_ by the 
+`type` variable, we will add a layer to our 
+`ggplot()` object using the `facet_grid()` or 
+`facet_wrap()` functions. The function expects
+the row and column variables to be separated 
+by a `~`. 
+
+```{r, fig.width=12, fig.height=8}
+hc %>%
+  filter(year == "2013") %>% 
+  ggplot(aes(x = spending_capita, y = prop_coverage, 
+             color = region)) + 
+  geom_point() + 
+  xlab("spending per capita") + 
+  ylab("coverage proportion") + 
+  geom_smooth(method = "lm", col = "red") + 
+  geom_text(aes(label=abb), nudge_x = 150) + 
+  facet_wrap(~type)
+```
+
+We see that the proportion of people covered 
+have different scales in the y-axis. Let's 
+read the help file to see if there is some way 
+to not restrict the y-axis to be the same. 
+```{r}
+?ggplot2::facet_grid
+```
+
+Yes, we see there is an argument called 
+`scales` that can be `free_y`, (free columns),
+`free_x` (free rows), and `free` (both). 
+Let's try `free_y` and look at a different
+year (`year=="2014"`): 
+
+```{r, fig.width=12, fig.height=6}
+hc %>%
+  filter(year == "2014") %>% 
+  ggplot(aes(x = spending_capita, y = prop_coverage, 
+             color = region)) + 
+  geom_point() + 
+  xlab("spending per capita") + 
+  ylab("coverage proportion") + 
+  geom_smooth(method = "lm", col = "red") + 
+  geom_text(aes(label=abb), nudge_x = 150) + 
+  facet_wrap(~type, scales="free_y")
+```
+
+Given we know `Other Public` refers to the 
+military or Veterans Adminstration, we can see 
+states like HI, VA, NV have a larger 
+proportion of military or VA `Other Public` 
+type coverage. While a state like AK has a 
+similar proportion of `Other Public` coverage, 
+it has a much larger spending per capita. 
+
+We also see a negative relationship with the 
+`Uninsured` type. The more states spend, the
+less uninsured people in the state. 
+
+### Creating boxplots using `geom_boxplot()`
+
+Next, let's revisit the second question. 
+
+> 2. Which US states spend the most and which spend the least on healthcare? How does the spending distribution change across geographic regions in the United States?
+
+Let's try making a boxplot with `ggplot2`. 
+If you recall, the way to do this in base R was: 
+
+```{r}
+boxplot(hc$spending_capita ~ hc$region)
+```
+
+Now, we introduce the `geom_boxplot()` 
+function. Note, we needed to tell `ggplot2`
+what needs to be along the x and y axis in
+`aes()`. 
+
+```{r}
+hc %>% 
+  ggplot(aes(x = region, y = spending_capita)) + 
+  geom_boxplot()
+```
+
+### faceting by two variables 
+
+> 3. How do healthcare coverage and spending relate to life expectancy? 
+
+In our last section, let's first explore 
+the relationship between spending and 
+life expectancy using facets. We were 
+faceting by healthcare `type`, so let's 
+stick with that, but change the y-axis
+to `life_exp_years`. 
+
+```{r, fig.width=12, fig.height=8}
+p <- hc %>%
+  filter(year == "2014") %>% 
+  ggplot(aes(x = spending_capita, y = life_exp_years, 
+             color = region)) + 
+  geom_point() + 
+  xlab("spending per capita") + 
+  ylab("life expectactancy") + 
+  geom_smooth(method = "lm", col = "red") + 
+  geom_text(aes(label=abb))
+
+p + facet_wrap(~type, scales="free")
+```
+
+Hmm... So looks like there is a positive 
+association for all the types (more you spend
+the longer the life expectacy). But there is 
+something strange about the fact that the regions
+have very different life expectancies. 
+
+Let's try faceting by both `region` and `type`. 
+Note that we can facet by rows putting a 
+column name before the `~` and facet by 
+columns putting a column name after the `~`. 
+We are also using `facet_grid()` instead of 
+`facet_wrap()`.
+
+```{r, fig.width=12, fig.height=8}
+p + facet_grid(region~type, scales="free")
+```
+
+What trends do you see? 
+
+Finally, let's do the same for the 
+`prop_coverage` column instead of 
+`spending_capita` column to explore the 
+relationship between life expectancy 
+
+```{r, fig.width=12, fig.height=8}
+p <- hc %>%
+  filter(year == "2014") %>% 
+  ggplot(aes(x = prop_coverage, y = life_exp_years, 
+             color = region)) + 
+  geom_point() + 
+  xlab("spending per capita") + 
+  ylab("life expectactancy") + 
+  geom_smooth(method = "lm", col = "red") + 
+  geom_text(aes(label=abb))
+
+p + facet_grid(region~type, scales="free")
+```
+
+What trends do you see? How would you summarize
+these results? What's most interesting?
+
+### `ggplot2` cheatsheet
+
+<img src="https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf" align="middle" width="700">
+
+# Mini-Case Study 1
+
+For the last 20 mins of class, we will break 
+into groups and work on a mini-case study. 
+You can find the case study on the 
+[course website](https://jhu-advdatasci.github.io/2018/). 
+
+
+
