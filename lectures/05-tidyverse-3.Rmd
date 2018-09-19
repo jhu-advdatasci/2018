@@ -211,6 +211,15 @@ they are from.
 ```{r}
 ## add your code here
 
+hc %>% 
+  filter(type == "Employer", year == "2013") %>% 
+  ggplot(aes(x = spending_capita, y = prop_coverage, 
+             color = region)) + 
+  geom_point() + 
+  xlab("spending per capita") + 
+  ylab("coverage proportion") + 
+  geom_smooth(method = "lm", col = "red") + 
+  geom_text(aes(label=abb), nudge_x = 150)
 ```
 
 
@@ -367,7 +376,7 @@ p <- hc %>%
   ggplot(aes(x = prop_coverage, y = life_exp_years, 
              color = region)) + 
   geom_point() + 
-  xlab("spending per capita") + 
+  xlab("coverage proportion") + 
   ylab("life expectactancy") + 
   geom_smooth(method = "lm", col = "red") + 
   geom_text(aes(label=abb))
@@ -388,6 +397,5 @@ For the last 20 mins of class, we will break
 into groups and work on a mini-case study. 
 You can find the case study on the 
 [course website](https://jhu-advdatasci.github.io/2018/). 
-
 
 
