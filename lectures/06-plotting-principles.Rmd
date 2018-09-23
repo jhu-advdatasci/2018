@@ -1,0 +1,534 @@
+---
+title: Plotting Principles and Expository Graphs
+date: Sept 24, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+```
+
+# Motiviation
+
+_“The greatest value of a picture is when it forces us to notice what we never expected to see.”_ -John W. Tukey
+
+![](http://upload.wikimedia.org/wikipedia/en/e/e9/John_Tukey.jpg)
+
+Mistakes, biases, systematic errors and 
+unexpected variability are commonly found 
+in data regardless of applications. Failure 
+to discover these problems often leads to 
+flawed analyses and false discoveries. As 
+an example, consider that measurement devices 
+sometimes fail and not all summarization 
+procedures, such as the mean() function in R, 
+are designed to detect these. Yet, these 
+functions will still give you an answer. Furthermore,
+it may be hard or impossible to notice an 
+error was made just from the reported summaries.
+
+Data visualization is a powerful approach to 
+detecting these problems. We refer to this 
+particular task as exploratory data analysis 
+(EDA), coined by John Tukey. Many important
+methodological contributions to existing 
+techniques in data analysis were initiated 
+by discoveries made via EDA.
+
+On a more positive note, data visualization 
+can also lead to discoveries which would 
+otherwise be missed if we simply subject 
+the data to a battery of statistical summaries 
+or procedures. Through this course, we make 
+use of exploratory plots to motivate the 
+analyses we choose.
+
+We have already introduced some EDA approaches, 
+namely boxplots and scatterplots using either
+base functions in R or using the ggplot2 
+package. Today, we are going to discuss 
+some types of plots to avoid, better ways to 
+visualize data, some principles to create good 
+plots, and ways to use `ggplot2` to create 
+expository (intended to explain or describe
+something) graphs.
+
+A lot of the material for this lecture was borrowed from
+
+* [https://github.com/genomicsclass/labs/blob/master/eda/plots_to_avoid.Rmd](https://github.com/genomicsclass/labs/blob/master/eda/plots_to_avoid.Rmd)
+* [http://jtleek.com/advdatasci/09-expository-graphs.html](http://jtleek.com/advdatasci/09-expository-graphs.html)
+
+# Plots to Avoid
+
+This section is based on a talk by [Karl W. Broman](http://kbroman.org/) titled 
+"How to Display Data Badly," in which he 
+described how the default plots offered by
+Microsoft Excel "obscure your data and annoy your readers" ([here](http://kbroman.org/pages/talks.html) 
+is a link to a collection of Karl Broman's talks). 
+
+His lecture was inspired by the 1984 paper by H. 
+Wainer: How to display data badly. American 
+Statistician 38(2): 137--147. Dr. Wainer was the 
+first to elucidate the principles of the bad 
+display of data. However, according to Karl Broman, 
+"The now widespread use of Microsoft Excel has
+resulted in remarkable advances in the field." 
+Here we show examples of "bad plots" and how to
+improve them in R.
+
+## Some general principles of _bad_ plots
+
+*  Display as little information as possible.
+*  Obscure what you do show (with chart junk).
+*  Use pseudo-3D and color gratuitously.
+*  Make a pie chart (preferably in color and 3D).
+*  Use a poorly chosen scale.
+*  Ignore significant figures.
+
+## Examples of bad plots and suggestions on how to improve
+
+### Pie charts
+
+Let's says we are interested in the most commonly 
+used browsers. Wikipedia has a
+[table](https://en.wikipedia.org/wiki/Usage_share_of_web_browsers) with the "usage share of web browsers" or the 
+proportion of visitors to a group of web sites 
+that use a particular web browser from July 2017.
+
+```{r}
+browsers <- c(Chrome=60, Safari=14, UCBrowser=7,
+              Firefox=5, Opera=3, IE=3, Noinfo=8)
+browsers.df <- gather(data.frame(t(browsers)), 
+                      "browser", "proportion") 
+```
+
+Let's say we want to report the results of the usage. 
+The standard way of displaying these is with a pie chart:
+
+```{r}
+pie(browsers,main="Browser Usage (July 2017)")
+```
+
+If we look at the help file for `pie()`:
+```{r}
+?pie
+```
+
+It states:
+
+> "Pie charts are a very bad way of displaying information. The eye is good at judging linear measures and bad at judging relative areas. A bar chart or dot chart is a preferable way of displaying this type of data."
+
+To see this, look at the figure above and try 
+to determine the percentages just from looking
+at the plot. Unless the percentages are close 
+to 25%, 50% or 75%, this is not so easy. 
+Simply showing the numbers is not only clear,
+but also saves on printing costs.
+
+#### Instead of pie charts, try bar plots
+
+If you do want to plot them, then a barplot is
+appropriate. Here we use the `geom_bar()` 
+function in `ggplot2`. Note, there are also
+horizontal lines at every multiple of 10, 
+which helps the eye quickly make comparisons across:
+
+```{r}
+p <- browsers.df %>% 
+        ggplot(aes(x=reorder(browser, -proportion), 
+                   y=proportion)) + 
+        geom_bar(stat="identity")
+p
+```
+
+Notice that we can now pretty easily determine 
+the percentages by following a horizontal line 
+to the x-axis.
+
+#### Polish your plots
+
+While this figure is already a big improvement 
+over a pie chart, we can do even better. When 
+you create figures, you want your figures to 
+be self-sufficient, meaning someone looking at
+the plot can understand everything about it.
+
+Some possible critiques are:
+
+1. make the axes bigger
+2. make the labels bigger
+3. make the labels be full names (e.g. "Browser"" and "Proportion of users", ideally with units when appropriate)
+4. add a title
+
+Let's explore how to do these things to make 
+an even better figure.
+
+To start, go to the help file for `theme()`
+
+```{r, eval=FALSE}
+?ggplot2::theme
+```
+
+We see there are arguments with text that control 
+all the text sizes in the plot. If you scroll down,
+you see the text argument in the theme command 
+requires class `element_text`. Let's try it out.
+
+To change the x-axis and y-axis labels to be 
+full names, use `xlab()` and `ylab()`
+
+```{r}
+p <- p + xlab("Browser") + ylab("Proportion of Users")
+p
+```
+
+Maybe a title
+
+```{r}
+p + ggtitle("Browser Usage (July 2017)")
+```
+
+Next, we can also use the `theme()` function in
+`ggplot2` to control the justifications and 
+sizes of the axes, labels and titles.
+
+To center the title
+```{r}
+p + ggtitle("Browser Usage (July 2017)") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+To create bigger text/labels/titles:
+```{r}
+p <- p + ggtitle("Browser Usage (July 2017)") + 
+        theme(plot.title = element_text(hjust = 0.5), 
+        text = element_text(size = 15))
+p
+```
+
+#### "I don’t like that theme"
+
+```{r}
+p + theme_bw()
+```
+
+```{r}
+p + theme_dark()
+```
+
+```{r}
+p + theme_classic() # axis lines!
+```
+
+```{r}
+p + ggthemes::theme_base()
+```
+
+
+### 3D barplots
+
+Please, avoid a 3D version because it obfuscates the plot, making it more difficult to find the percentages by eye.
+
+![](https://raw.githubusercontent.com/kbroman/Talk_Graphs/master/Figs/fig2b.png)
+
+
+### Donut plots
+
+Even worse than pie charts are donut plots.
+
+![](http://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Donut-Chart.svg/360px-Donut-Chart.svg.png)
+
+The reason is that by removing the center, we remove one of the visual cues for determining the different areas: the angles. **There is no reason to ever use a donut plot to display data**.
+
+### Barplots as data summaries
+
+While barplots are useful for showing percentages, they are incorrectly used to display data from two groups being compared. Specifically, barplots are created with height equal to the group means; an antenna is added at the top to represent standard errors. This plot is simply showing two numbers per group and the plot adds nothing:
+
+![](https://raw.githubusercontent.com/kbroman/Talk_Graphs/master/Figs/fig1c.png)
+
+#### Instead of bar plots for summaries, try box plots
+
+If the number of points is small enough, we 
+might as well add them to the plot. When the 
+number of points is too large for us to see 
+them, just showing a boxplot is preferable.
+
+Let’s recreate these barplots as boxplots and
+overlay the points. We will simulate similar 
+data to demonstrate one way to improve the 
+graphic above.
+
+```{r}
+set.seed(1000)
+dat <- data.frame("Treatment" = rnorm(10, 30, sd=4), 
+                  "Control" = rnorm(10, 36, sd=4))
+gather(dat, "type", "response") %>% 
+  ggplot(aes(type, response)) + 
+  geom_boxplot() + 
+  geom_point(position='jitter') + 
+  ggtitle("Response to drug treatment")
+```
+
+Notice how much more we see here: the center, 
+spread, range, and the points themselves. In the 
+barplot, we only see the mean and the standard 
+error (SE), and the SE has more to do with sample
+size than with the spread of the data.
+
+This problem is magnified when our data has 
+outliers or very large tails. For example, in
+the plot below, there appears to be very large
+and consistent differences between the two groups:
+
+![](https://raw.githubusercontent.com/kbroman/Talk_Graphs/master/Figs/fig3c.png)
+
+However, a quick look at the data demonstrates
+that this difference is mostly driven by just 
+two points.
+
+```{r}
+set.seed(1000)
+dat <- data.frame("Treatment" = rgamma(10, 10, 1), 
+                  "Control" = rgamma(10, 1, .01))
+gather(dat, "type", "response") %>% 
+  ggplot(aes(type, response)) + 
+  geom_boxplot() + 
+  geom_point(position='jitter')
+```
+
+
+#### Use log scale if data includes outliers
+
+A version showing the data in the log-scale 
+is much more informative.
+
+```{r}
+ gather(dat, "type", "response") %>% 
+  ggplot(aes(type, response)) + 
+  geom_boxplot() + 
+  geom_point(position='jitter') + 
+  scale_y_log10()
+```
+
+
+### Barplots for paired data
+
+A common task in data analysis is the comparison 
+of two groups. When the dataset is small and 
+data are paired, such as the outcomes before 
+and after a treatment, two-color barplots are 
+unfortunately often used to display the results.
+
+![](https://raw.githubusercontent.com/kbroman/Talk_Graphs/master/Figs/fig6r_e.png)
+
+#### Instead of paired bar plots, try scatter plots
+
+There are better ways of showing these data to 
+illustrate that there is an increase after 
+treatment. One is to simply make a scatter 
+plot, which shows that most points are above 
+the identity line. Another alternative is to
+plot the differences against the before values.
+
+```{r}
+set.seed(1000)
+before <- runif(6, 5, 8)
+after <- rnorm(6, before*1.15, 2)
+li <- range(c(before, after))
+ymx <- max(abs(after-before))
+
+par(mfrow=c(1,2))
+plot(before, after, xlab="Before", ylab="After",
+     ylim=li, xlim=li)
+abline(0,1, lty=2, col=1)
+
+plot(before, after-before, xlab="Before", ylim=c(-ymx, ymx),
+     ylab="Change (After - Before)", lwd=2)
+abline(h=0, lty=2, col=1)
+```
+
+#### or line plots
+
+Line plots are not a bad choice, although they
+can be harder to follow than the previous two. 
+Boxplots show you the increase, but lose the 
+paired information.
+
+```{r}
+z <- rep(c(0,1), rep(6,2))
+par(mfrow=c(1,2))
+plot(z, c(before, after),
+     xaxt="n", ylab="Response",
+     xlab="", xlim=c(-0.5, 1.5))
+axis(side=1, at=c(0,1), c("Before","After"))
+segments(rep(0,6), before, rep(1,6), after, col=1)     
+
+boxplot(before,after,names=c("Before","After"),ylab="Response")
+```
+
+### Gratuitous 3D
+
+The figure below shows three curves. Pseudo 3D is 
+used, but it is not clear why. Maybe to separate 
+the three curves? Notice how difficult it is to
+determine the values of the curves at any given point:
+
+![](https://raw.githubusercontent.com/kbroman/Talk_Graphs/master/Figs/fig8b.png)
+
+This plot can be made better by simply using color to distinguish the three lines:
+```{r}
+x <- read.csv("https://github.com/kbroman/Talk_Graphs/raw/master/R/fig8dat.csv")
+
+p <- x %>% 
+  gather("drug", "proportion", -log.dose) %>% 
+  ggplot(aes(x=log.dose, y=proportion,
+             color=drug)) + 
+  geom_line()
+p
+```
+
+This plot demonstrates that using color is more than enough to distinguish the three lines.
+
+We can make this plot better using the functions we learned above
+
+```{r}
+p + ggtitle("Survival proportion") + 
+        theme(plot.title = element_text(hjust = 0.5), 
+        text = element_text(size = 15))
+```
+
+#### Legends
+
+We can also move the legend inside the plot
+
+```{r}
+p + ggtitle("Survival proportion") + 
+        theme(plot.title = element_text(hjust = 0.5), 
+        text = element_text(size = 15), 
+        legend.position = c(0.2, 0.3))
+```
+
+We can also make the legend transparent
+```{r}
+transparent_legend =  theme(
+  legend.background = element_rect(fill = "transparent"),
+  legend.key = element_rect(fill = "transparent", 
+                            color = "transparent"))
+
+p + ggtitle("Survival proportion") + 
+        theme(plot.title = element_text(hjust = 0.5), 
+        text = element_text(size = 15), 
+        legend.position = c(0.2, 0.3)) + 
+  transparent_legend
+```
+
+### Too many significant digits
+
+By default, statistical software like R returns 
+many significant digits. This does not mean we 
+should report them. Cutting and pasting directly
+from R is a bad idea since you might end up 
+showing a table, such as the one below, 
+comparing the heights of basketball players:
+
+```{r}
+heights <- cbind(rnorm(8,73,3),rnorm(8,73,3),rnorm(8,80,3),
+                 rnorm(8,78,3),rnorm(8,78,3))
+colnames(heights)<-c("SG","PG","C","PF","SF")
+rownames(heights)<- paste("team",1:8)
+heights
+```
+
+
+We are reporting precision up to 0.00001 inches.
+Do you know of a tape measure with that much 
+precision? This can be easily remedied:
+
+```{r}
+round(heights,1)
+```
+
+
+### Minimal figure captions
+
+Recall the plot we had before:
+
+```{r}
+transparent_legend =  theme(
+  legend.background = element_rect(fill = "transparent"),
+  legend.key = element_rect(fill = "transparent", 
+                            color = "transparent"))
+
+p + ggtitle("Survival proportion") + 
+        theme(plot.title = element_text(hjust = 0.5), 
+        text = element_text(size = 15), 
+        legend.position = c(0.2, 0.3)) + 
+  xlab("dose (mg)") + 
+  transparent_legend
+```
+
+What type of caption would be good here?
+
+When creating figure captions, think about the following:
+
+1. Be specific
+
+> A plot of the proportion of patients who survived after three drug treatments.
+
+2. Label the caption
+
+> Figure 1. A plot of the proportion of patients who survived after three drug treatments.
+
+3. Tell a story
+
+> Figure 1. Drug treatment survival. A plot of the proportion of patients who survived after three drug treatments.
+
+4. Include units
+
+> Figure 1. Drug treatment survival. A plot of the proportion of patients who survived after three drug treatments (milligram).
+
+5. Explain aesthetics
+
+>Figure 1. Drug treatment survival. A plot of the proportion of patients who survived after three drug treatments (milligram). Three colors represent three drug treatments. Drug A results in largest survival proportion for the larger drug doses.
+
+# Final thoughts
+
+In general, you should follow these principles:
+
+* Create expository graphs to tell a story (figure and caption should be self-sufficient; it's the first thing people look at)
+  * Be accurate and clear
+  * Let the data speak
+  * Make axes, labels and titles big
+  * Make labels full names (ideally with units when appropriate)
+  * Add informative legends; use space effectively
+* Doesn't matter `base` vs `ggplot2`
+* Show as much information as possible, taking care not to obscure the message
+* Science not sales: avoid unnecessary frills (especially gratuitous 3D)
+* In tables, every digit should be meaningful
+
+## Some further reading
+
+* N Cross (2011). Design Thinking: Understanding How Designers Think and Work. Bloomsbury Publishing.
+* J Tukey (1977). Exploratory Data Analysis.
+* ER Tufte (1983) The visual display of quantitative information. Graphics Press.
+* ER Tufte (1990) Envisioning information. Graphics Press.
+* ER Tufte (1997) Visual explanations. Graphics Press.
+* WS Cleveland (1993) Visualizing data. Hobart Press.
+* WS Cleveland (1994) The elements of graphing data. CRC Press.
+* A Gelman, C Pasarica, R Dodhia (2002) Let’s practice what we preach: Turning tables into graphs. The American Statistician 56:121-130.
+* NB Robbins (2004) Creating more effective graphs. Wiley.
+* [Nature Methods columns](http://bang.clearscience.info/?p=546) 
+
+
