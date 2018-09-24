@@ -58,7 +58,9 @@ analyses we choose.
 We have already introduced some EDA approaches, 
 namely boxplots and scatterplots using either
 base functions in R or using the ggplot2 
-package. Today, we are going to discuss 
+package. 
+
+Today, we are going to discuss 
 some types of plots to avoid, better ways to 
 visualize data, some principles to create good 
 plots, and ways to use `ggplot2` to create 
@@ -101,7 +103,7 @@ improve them in R.
 
 ### Pie charts
 
-Let's says we are interested in the most commonly 
+Let's say we are interested in the most commonly 
 used browsers. Wikipedia has a
 [table](https://en.wikipedia.org/wiki/Usage_share_of_web_browsers) with the "usage share of web browsers" or the 
 proportion of visitors to a group of web sites 
@@ -122,7 +124,7 @@ pie(browsers,main="Browser Usage (July 2017)")
 ```
 
 If we look at the help file for `pie()`:
-```{r}
+```{r, eval=FALSE}
 ?pie
 ```
 
@@ -169,7 +171,7 @@ Some possible critiques are:
 
 1. make the axes bigger
 2. make the labels bigger
-3. make the labels be full names (e.g. "Browser"" and "Proportion of users", ideally with units when appropriate)
+3. make the labels be full names (e.g. "Browser" and "Proportion of users", ideally with units when appropriate)
 4. add a title
 
 Let's explore how to do these things to make 
@@ -190,7 +192,8 @@ To change the x-axis and y-axis labels to be
 full names, use `xlab()` and `ylab()`
 
 ```{r}
-p <- p + xlab("Browser") + ylab("Proportion of Users")
+p <- p + xlab("Browser") + 
+        ylab("Proportion of Users")
 p
 ```
 
@@ -465,7 +468,7 @@ round(heights,1)
 
 Recall the plot we had before:
 
-```{r}
+```{r, fig.cap=""}
 transparent_legend =  theme(
   legend.background = element_rect(fill = "transparent"),
   legend.key = element_rect(fill = "transparent", 
@@ -501,7 +504,7 @@ When creating figure captions, think about the following:
 
 5. Explain aesthetics
 
->Figure 1. Drug treatment survival. A plot of the proportion of patients who survived after three drug treatments (milligram). Three colors represent three drug treatments. Drug A results in largest survival proportion for the larger drug doses.
+> Figure 1. Drug treatment survival. A plot of the proportion of patients who survived after three drug treatments (milligram). Three colors represent three drug treatments. Drug A results in largest survival proportion for the larger drug doses.
 
 # Final thoughts
 
