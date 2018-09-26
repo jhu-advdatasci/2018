@@ -1,0 +1,586 @@
+---
+title: Getting Data and Using APIs
+date: Sept 26, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", out.width = '90%')
+```
+
+Before we begin, you will need to install
+these packages
+
+```{r,eval=FALSE}
+install.packages("jsonlite")
+install.packages("rvest")
+install.packages("pollstR")
+```
+
+Now we load a few R packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(jsonlite)
+library(rvest)
+library(pollstR)
+```
+
+# Motivation
+
+Today we are going to talk about getting data, 
+examples of common data formats, and useful 
+tools to access data. 
+
+First let's have a bit of a philosophical 
+discussion about data. 
+
+## "Raw" vs "Clean" data
+
+As data analysts, this is what we wished data 
+looked like whenever we start a project
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/tidy-data-example.png")
+```
+
+However, the reality, is data is rarely in that 
+form in comes in all types of _"raw"_ formats that 
+need to be transformed into a _"clean"_ format. 
+
+For example, in field of genomics, raw data 
+looks like something like this: 
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/fastq.png")
+```
+
+Or if you are interested in analyzing data from 
+Twitter: 
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/twitter-api.png")
+```
+
+Or data from Electronic Healthcare Records (EHRs): 
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/ehr.png")
+```
+
+We all have our scary spreadsheet tales. Here is 
+Jenny Bryan from RStudio and UBC actually asking 
+for some of those spreasheet tales on twitter. 
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/spreadsheet-tales.png")
+```
+
+For example, this is an actual 
+[spreadsheet from Enron in 2001](https://github.com/jennybc/2016-06_spreadsheets/blob/master/2016-06_useR-stanford.pdf): 
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/enron-spreadsheet.png")
+```
+
+### What do we mean by "raw" data? 
+
+From [https://simplystatistics.org/2016/07/20/relativity-raw-data/](https://simplystatistics.org/2016/07/20/relativity-raw-data/)
+raw data is defined as data... 
+
+> ...if you have done no processing, manipulation, coding, or analysis of the data. In other words, the file you received from the person before you is untouched. But it may not be the rawest version of the data. The person who gave you the raw data may have done some computations. They have a different "raw data set".
+
+## Where do data live? 
+
+Data lives anywhere and everywhere. Data 
+might be stored simply in a `.csv` or `.txt`
+file. Data might be stored in an Excel or 
+Google Spreadsheet. Data might be stored in 
+large databases that require users to write 
+special functions to interact with to extract 
+the data they are interested in. 
+
+For example, you may have heard of the terms 
+`mySQL` or `MongoDB`. 
+
+From [Wikipedia, MySQL](https://en.wikipedia.org/wiki/MySQL) 
+is defined as _an open-source relational database management system (RDBMS). Its name is a combination of "My", the name of co-founder Michael Widenius's daughter,[7] and "SQL", the abbreviation for Structured Query Language._. 
+
+From [Wikipeda, MongoDB](https://en.wikipedia.org/wiki/MongoDB)
+is defined as _"a free and open-source cross-platform document-oriented database program. Classified as a NoSQL database program, MongoDB uses JSON-like documents with schemata."_
+
+So after reading that, we get the sense that there
+are multiple ways large databases can be structured, 
+data can be formatted and interacted with. 
+In addition, we see that database programs 
+(e.g. MySQL and MongoDB) can also interact 
+with each other.
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/databases.png")
+```
+
+We will learn more about `JSON` in a bit. 
+
+# Best practices on sharing data
+
+A great article in PeerJ was written 
+titled [_How to share data for collaboration_](https://peerj.com/preprints/3139v5.pdf), 
+in which the authors describe a set of guidelines
+for sharing data:
+
+> We highlight the need to provide raw data to the statistician, the importance of consistent formatting, and the necessity of including all essential experimental information and pre-processing steps carried out to the statistician. With these guidelines we hope to avoid errors and delays in data analysis. the importance of consistent formatting, and the necessity of including all essential experimental information and pre-processing steps carried out to the statistician.
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/ellis-datashare.png")
+```
+
+It's a great paper that describes the information 
+you should pass to a statistician to facilitate 
+the most efficient and timely analysis. Specifically:
+
+1. The raw data (or the rawest form of the data to which you have access)
+    * Should not have modified, removed or summarized any data; Ran no software on data
+    * e.g. strange binary file your measurement machine spits out
+    * e.g. complicated JSON file you scrapped from Twitter Application Programming Interfaces (API)
+    * e.g. hand-entered numbers you collected looking through a microscope
+
+2. A clean data set
+    * This may or may not be transforming data into a `tidy` dataset, but possibly yes
+
+3. A code book describing each variable and its values in the clean or tidy data set.
+    * More detailed information about the measurements in the data set (e.g. units, experimental design, summary choices made)
+    * Doesn't quite fit into the column names in the spreadsheet
+    * Often reported in a `.md`, `.txt` or Word file. 
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/code-book.png")
+```
+
+4. An explicit and exact recipe you used to go from 1 -> 2,3
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/recipe-best.png")
+```
+
+# Before we go get some data
+
+First let's talk about a few important things 
+before we download any data. 
+
+## Relative versus absolute paths
+
+When you are starting a data analysis, you have
+already learned about the use of `.Rproj` files. 
+When you open up a `.Rproj` file, RStudio changes 
+the path (location on your computer) to the `.Rproj` 
+location. 
+
+After opening up a `.Rproj` file, you can test this
+by
+
+```{r, eval=FALSE}
+getwd()
+```
+
+When you open up someone else's R code or analysis, 
+you might also see the `setwd()` function being used
+which explicitly tells R to change the absolute path 
+or absolute location of which directory to move into. 
+
+For example, say I want to clone a GitHub repo from 
+Roger, which has 100 R script files, and in every 
+one of those files at the top is: 
+
+```{r, eval=FALSE}
+setwd("C:\Users\Roger\path\only\that\Roger\has")
+```
+
+The problem is, if I want to use his code, I will 
+need to go and hand-edit every single one of those 
+paths (`C:\Users\Roger\path\only\that\Roger\has`)
+to the path that I want to use on my computer 
+or wherever I saved the folder on my computer (e.g. 
+`/Users/Stephanie/Documents/path/only/I/have`). 
+
+1. This is an unsustainable practice. 
+2. I can go in and manually edit the path, but this 
+assumes I know how to set a working directory. Not 
+everyone does. 
+
+So instead of absolute paths: 
+
+```{r, eval=FALSE}
+setwd("/Users/jtleek/data")
+setwd("~/Desktop/files/data")
+setwd("C:\\Users\\Andrew\\Downloads")
+```
+
+A better idea is to use relative paths: 
+
+```{r, eval=FALSE}
+setwd("../data")
+setwd("../files")
+setwd("..\tmp")
+```
+
+An even better idea is to use the 
+[here](https://cran.r-project.org/package=here)
+R package will recognize the top-level directory 
+of a Git repo and supports building all paths 
+relative to that. For more on project-oriented 
+workflow suggestions, read 
+[this post](https://www.tidyverse.org/articles/2017/12/workflow-vs-script/)
+from Jenny Bryan.
+
+
+## Finding and creating files locally
+
+If you want to download a file, one way to use the 
+`file.exists()`, `dir.create()` and `list.files()`
+functions. 
+
+* `file.exists("my/relative/path")` = logical test if the file exists
+* `dir.create("my/relative/path")` = create a folder
+* `list.files("my/relative/path")` = list contents of folder
+
+```{r, eval=FALSE}
+if(!file.exists("my/relative/path")){
+  dir.create("my/relative/path")
+}
+list.files("my/relative/path")
+```
+
+# Getting data
+
+## Downloading files
+
+Let's say we wanted to find out where are
+all the Fixed Speed Cameras in Baltimore? 
+
+To do this, we can use the 
+[Open Baltimore](https://data.baltimorecity.gov) 
+API which has information on 
+[the locations](https://data.baltimorecity.gov/Transportation/Baltimore-Fixed-Speed-Cameras/dz54-2aru) of fixed speed cameras
+in Baltimore. 
+
+In case you aren't familiar with 
+fixed speed cameras, the website states: 
+
+> Motorists who drive aggressively and exceed the posted speed limit by at least 12 miles per hour will receive $40 citations in the mail. These citations are not reported to insurance companies and no license points are assigned. Notification signs will be placed at all speed enforcement locations so that motorists will be aware that they are approaching a speed check zone. The goal of the program is to make the streets of Baltimore safer for everyone by changing aggressive driving behavior. In addition to the eight portable speed enforcement units, the city has retrofitted 50 red light camera locations with the automated speed enforcement technology.
+
+When we go to the website, we see that
+the data can be provided to us as a 
+`.csv` file. To download in this data,
+we can do the following: 
+
+```{r, eval=FALSE}
+file_url <- paste0("https://data.baltimorecity.gov/api/",
+                   "views/dz54-2aru/rows.csv?accessType=DOWNLOAD")
+download.file(file_url,
+              destfile="../data/cameras.csv")
+list.files("../data/.")
+```
+
+Alternatively, if we want to only download
+the file once each time we knit our reproducible
+report or homework or project, we can us wrap
+the code above into a `!file.exists()` function. 
+
+```{r}
+if(!file.exists("../data/cameras.csv")){
+  file_url <- paste0("https://data.baltimorecity.gov/api/",
+                   "views/dz54-2aru/rows.csv?accessType=DOWNLOAD")
+  download.file(file_url,
+                destfile = "../data/cameras.csv")
+}
+list.files("../data/.")
+```
+
+## Reading in CSV files
+
+From there, we can read in the `cameras.csv`
+like we have already learned how to do using the 
+`readr::read_csv()` function: 
+
+```{r}
+cameras <- readr::read_csv("../data/cameras.csv")
+cameras
+```
+
+## Reading in a JSON file using `jsonlite`
+
+### What is JSON? 
+
+JSON (or JavaScript Object Notation) is a file
+format that stores information in human-readable, 
+organized, logical, easy-to-access manner.
+
+For example, here is what a JSON file looks 
+like: 
+
+```{javascript, eval=FALSE}
+var stephanie = {
+	"age" : "33",
+	"hometown" : "Baltimore, MD",
+	"gender" : "female", 
+  "cars" : {
+    "car1" : "Hyundai Elantra"
+    "car2" : "Toyota Rav4"
+    "car3" : "Honda CR-V"
+  }
+}
+```
+
+Some features about `JSON` object: 
+
+* JSON objects are surrounded by curly braces `{}`
+* JSON objects are written in key/value pairs
+* Keys must be strings, and values must be a valid JSON data type (string, number, object, array, boolean)
+* Keys and values are separated by a colon
+* Each key/value pair is separated by a comma
+
+### Using GitHub API
+
+Let's say we want to use the 
+[GitHub API](https://developer.github.com/v3/?)
+to find out how many of my GitHub repositories
+have open issues? 
+
+We will use the 
+[jsonlite](https://cran.r-project.org/web/packages/jsonlite/index.html)
+R package and the `fromJSON()` function
+to convert from a JSON object to a data frame. 
+
+We will read in a JSON file located at 
+[https://api.github.com/users/stephaniehicks/repos](https://api.github.com/users/stephaniehicks/repos)
+
+```{r}
+github_url = "https://api.github.com/users/stephaniehicks/repos"
+
+library(jsonlite)
+jsonData <- fromJSON(github_url)
+```
+
+The function `fromJSON()` has now converted 
+the JSON file into a data frame with the names: 
+
+```{r}
+names(jsonData)
+```
+
+To find out how many repos that I have
+with open issues, we can just create 
+a table: 
+
+```{r}
+# how many repos have open issues? 
+table(jsonData$open_issues_count)
+```
+
+Whew! Not as many as I thought.
+
+How many do you have? 
+
+Finally, I will leave you with a few 
+other examples of using GitHub API: 
+
+* [How long does it take to close a GitHub Issue in the `dplyr` package?](https://blog.exploratory.io/analyzing-issue-data-with-github-rest-api-63945017dedc)
+* [How to retrieve all commits for a branch](https://stackoverflow.com/questions/9179828/github-api-retrieve-all-commits-for-all-branches-for-a-repo)
+* [Getting my GitHub Activity](https://masalmon.eu/2017/12/21/wherehaveyoubeen/)
+
+![](https://masalmon.eu/figure/source/2017-12-21-wherehaveyoubeen/unnamed-chunk-5-1.png)
+
+
+## Reading in XML or HTML files using `rvest`
+
+Do we want to purchase a book on Amazon? 
+
+Next we are going to learn about what to do if
+your data is on a website (XML or HTML) formatted 
+to be read by humans instead of R.
+
+We will use the (really powerful)
+[rvest](https://cran.r-project.org/web/packages/rvest/rvest.pdf)
+R package to do what is often called 
+"scraping data from the web". 
+
+Before we do that, we need to set up a 
+few things:
+
+* [SelectorGadget tool](http://selectorgadget.com/)
+* [rvest and SelectorGadget guide](https://cran.r-project.org/web/packages/rvest/vignettes/selectorgadget.html)
+* [Awesome tutorial for CSS Selectors](http://flukeout.github.io/#)
+* [Introduction to stringr](https://cran.r-project.org/web/packages/stringr/vignettes/stringr.html)
+* [Regular Expressions/stringr tutorial](https://stat545-ubc.github.io/block022_regular-expression.html)
+* [Regular Expression online tester](https://regex101.com/#python)- explains a regular expression as it is built, and confirms live whether and how it matches particular text.
+
+We're going to be scraping [this page](http://www.amazon.com/ggplot2-Elegant-Graphics-Data-Analysis/product-reviews/0387981403/ref=cm_cr_dp_qt_see_all_top?ie=UTF8&showViewpoints=1&sortBy=helpful): it just contains the (first page of) reviews of the 
+ggplot2 book by Hadley Wickham. 
+
+```{r}
+url <- "http://www.amazon.com/ggplot2-Elegant-Graphics-Data-Analysis/product-reviews/0387981403/ref=cm_cr_dp_qt_see_all_top?ie=UTF8&showViewpoints=1&sortBy=helpful"
+```
+
+We use the `rvest` package to download this page.
+
+```{r}
+library(rvest)
+h <- read_html(url)
+```
+
+Now `h` is an `xml_document` that contains the contents of the page:
+
+```{r}
+h
+```
+
+How can you actually pull the interesting 
+information out? That's where CSS selectors come in.
+
+### CSS Selectors
+
+CSS selectors are a way to specify a subset of 
+nodes (that is, units of content) on a web page
+(e.g., just getting the titles of reviews). 
+CSS selectors are very powerful and not too 
+challenging to master- here's 
+[a great tutorial](http://flukeout.github.io/#) 
+But honestly you can get a lot done even with 
+very little understanding, by using a tool 
+called SelectorGadget.
+
+Install the [SelectorGadget](http://selectorgadget.com/) 
+on your web browser. (If you use Chrome you can
+use the Chrome extension, otherwise drag the 
+provided link into your bookmarks bar). 
+[Here's a guide for how to use it with rvest to "point-and-click" your way to a working selector](http://selectorgadget.com/).
+
+For example, if you just wanted the titles, 
+you'll end up with a selector that looks 
+something like `.a-color-base`. You can pipe
+your HTML object along with that selector 
+into the `html_nodes` function, to select 
+just those nodes:
+
+```{r}
+h %>%
+  html_nodes(".a-color-base")
+```
+
+But you need the text from each of these, not the full tags. Pipe to the `html_text` function to pull these out:
+
+```{r}
+review_titles <- h %>%
+  html_nodes(".a-color-base") %>%
+  html_text()
+
+review_titles
+```
+
+Now we've extracted something useful! Similarly, 
+let's grab the format (hardcover or paperback).
+Some experimentation with SelectorGadget 
+shows it's:
+
+```{r}
+h %>%
+  html_nodes(".a-size-mini.a-color-secondary") %>%
+  html_text()
+```
+
+Now, we may be annoyed that it always
+starts with `Format: `. Let's introduce 
+the `stringr` package.
+
+```{r}
+formats <- h %>%
+  html_nodes(".a-size-mini.a-color-secondary") %>%
+  html_text() %>%
+  str_replace("Format: ", "")
+
+formats
+```
+
+We could do similar exercise for extracting
+the number of stars and whether or not someone
+found a review useful. This would help us decide
+if we were interested in purchasing the book! 
+
+
+
+## Other cool APIs
+
+### Huffington Post Opinion Polling data 
+
+The Huffington Post has an API which provides
+US opinion poll data on various political races 
+and other non-political opinion polls. 
+
+There is an R package called 
+[`pollstR`](https://cran.r-project.org/web/packages/pollstR/index.html)
+which provides an easy user interface. 
+
+For example, the API has data on the 
+[Trump Job Approval](http://elections.huffingtonpost.com/pollster/trump-job-approval)
+
+Here we use the `pollster_charts_polls()`
+function: 
+
+```{r}
+library(pollstR)
+trump_approval <- pollster_charts_polls("trump-job-approval")
+```
+
+We can see what's in the object: 
+```{r}
+names(trump_approval)
+```
+
+The `url` links to the data itself
+```{r}
+trump_approval$url
+```
+
+The `content` contains the polling data: 
+```{r}
+trump_approval$content
+```
+
+We will learn more about polling data in 
+Term 2 of this course. 
+
+
+# Summary
+
+* Best practices for sharing data
+* Best practices for downloading and reading in data
+  * Relative versus absolute paths
+  * Finding and creating files locally
+* Best practices for getting data 
+  * `jsonlite` for JSON (e.g. GitHub API)
+  * `rvest` to grab all the exact elements you want (e.g. book reviews)
+      * Check out selector gadget 
+  * Other APIs
+      * Huffington Post API
+    
+## Other good R packages to know about 
+
+* [`httr`](https://cran.r-project.org/web/packages/httr/index.html) for tools to work with URLs and HTTP
+* [`googlesheets`](https://cran.r-project.org/web/packages/googlesheets/vignettes/basic-usage.html) to interact with Google Sheets in R
+* [`googledrive`](https://googledrive.tidyverse.org](http://googledrive.tidyverse.org/) to interact with your Google Drive
+
+
+
+
+
+
