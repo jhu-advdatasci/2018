@@ -334,8 +334,8 @@ var stephanie = {
 	"hometown" : "Baltimore, MD",
 	"gender" : "female", 
   "cars" : {
-    "car1" : "Hyundai Elantra"
-    "car2" : "Toyota Rav4"
+    "car1" : "Hyundai Elantra",
+    "car2" : "Toyota Rav4",
     "car3" : "Honda CR-V"
   }
 }
@@ -369,6 +369,7 @@ github_url = "https://api.github.com/users/stephaniehicks/repos"
 
 library(jsonlite)
 jsonData <- fromJSON(github_url)
+jsonData
 ```
 
 The function `fromJSON()` has now converted 
