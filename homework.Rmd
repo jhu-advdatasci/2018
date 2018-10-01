@@ -18,3 +18,12 @@ Homework assignments and solutions will be add here throughout the courses.
     * To access and submit assignment: [https://classroom.github.com/a/KkRjeZ8J](https://classroom.github.com/a/KkRjeZ8J)
 
 
+### Homework 2
+
+  * Due Friday, October 12, 2018 by 11:59pm
+  * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/hw2-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/hw2-assignment.Rmd))
+    * To access and submit assignment: [https://classroom.github.com/a/0zDYpUG-](https://classroom.github.com/a/0zDYpUG-)
+
+
+
+
