@@ -17,7 +17,6 @@ options(tibble.print_min = 5)
 knitr::opts_chunk$set(comment = NA, collapse = FALSE)
 ```
 
-# Dates and Times in R
 
 R has developed a special representation of dates and times
 
