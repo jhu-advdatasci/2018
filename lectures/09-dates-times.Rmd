@@ -1,0 +1,304 @@
+---
+title: "Dates and Times in R"
+date: October 3, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+```{r, include=FALSE}
+options(tibble.print_min = 5)
+knitr::opts_chunk$set(comment = NA, collapse = FALSE)
+```
+
+# Dates and Times in R
+
+R has developed a special representation of dates and times
+
+- Dates are represented by the `Date` class
+
+- Times are represented by the `POSIXct` or the `POSIXlt` class
+
+- Dates are stored internally as the number of days since 1970-01-01
+
+- Times are stored internally as the number of seconds since
+  1970-01-01
+
+# The `lubridate` package
+
+* The `lubridate` package is a very useful package for dealing with all the little annoying aspects of dates/times
+
+* Largely replaces the default date/time functions in base R
+
+* Methods for date/time arithmetic
+
+* Handles time zones, leap year, leap seconds, etc.
+
+```{r,eval=FALSE}
+install.packages("lubridate")
+## Not part of `tidyverse` package
+```
+
+# Dates in R
+
+Dates are represented by the `Date` class and can be coerced from a character string using the `ymd()` function.
+
+```{r,message=FALSE}
+library(lubridate)
+x <- ymd("1970-01-01")
+x
+class(x)
+unclass(x)
+
+x <- ymd("2019-10-03")
+unclass(x)
+```
+
+`Date` objects have their own special print methods that will always format as "YYYY-MM-DD".
+
+## Alternate Formulations
+
+Different locales have different ways formatting dates
+
+```{r}
+ymd("2016-09-13")  ## International standard
+ymd("2016/09/13")  ## Just figure it out
+mdy("09-13-2016")  ## Mostly U.S.
+dmy("13-09-2016")  ## Europe
+```
+All of the above are valid and lead to the exact same object.
+
+# Times in R
+
+Times are represented using the `POSIXct` or the `POSIXlt` class
+
+
+- `POSIXct` is just a very large integer under the hood; it is a useful class when you want to store times in something like a data frame
+
+- `POSIXlt` is a list underneath and it stores a bunch of other useful information like the day of the week, day of the year, month, day of the month
+
+Times are represented as the number of *seconds* since 1970-01-01 00:00:00.
+
+```{r}
+x <- ymd_hms("2019-10-03 13:30:00")
+class(x)
+unclass(x)
+```
+
+## Inputing Time Data
+
+Times can be coerced from a character string with `ymd_hms()`
+
+```{r}
+ymd_hms("2016-09-13 14:00:00")
+ymd_hms("2016-09-13 14:00:00", tz = "America/New_York")
+ymd_hms("2016-09-13 14:00:00", tz = "")
+```
+
+# Time Zones!
+
+Time zones were created to make your data analyses more difficult.
+
+* `ymd_hms()` function will by default use UTC as the time zone
+
+* Specifying `tz = ""` will use the local time zone
+
+* Better to specify time zone when possible to avoid ambiguity
+
+You can go to Wikipedia to find the [list of time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+
+
+# Specifying Times in R
+
+Finally, there is the `strptime()` function in case your dates are
+written in a different format
+
+```{r,tidy=FALSE}
+datestring <- c("January 10, 2012 10:40", 
+                "December 9, 2011 9:10")
+x <- strptime(datestring, "%B %d, %Y %H:%M", 
+              tz = "America/Los_Angeles")
+x
+```
+
+* Check `?strptime` for details of formatting strings
+
+* When reading in data with `read_csv()`, you may need to read in as character first and then convert to date/time
+
+
+# Operations on Dates and Times
+
+## Arithmetic 
+
+You can add and subtract dates and times. You can do comparisons too (i.e. `==`, `<=`)
+
+```{r, error=TRUE}
+x <- ymd("2012-01-01", tz = "")  ## Midnight
+y <- dmy_hms("9 Jan 2011 11:34:21", tz = "")
+x - y
+x + y  ## Nope!
+```
+
+
+
+Add a second to a time
+```{r}
+y + 1
+```
+Just keep the date portion
+```{r}
+y <- date(y)
+y
+```
+Add a number to the date (in this case 1 day)
+```{r}
+y + 1  
+```
+
+## Leaps and Bounds
+
+Even keeps track of leap years, leap seconds, daylight savings, and time zones.
+
+Leap years
+```{r}
+x <- ymd("2012-03-01")
+y <- ymd("2012-02-28")
+x - y
+```
+Time zones!
+```{r}
+x <- ymd_hms("2012-10-25 01:00:00", tz = "")
+y <- ymd_hms("2012-10-25 06:00:00", tz = "GMT")
+y - x
+```
+
+# Extracting Elements of Dates/Times
+
+There are a set of helper functions in `lubridate` that can extract sub-elements of dates/times
+
+## Date Elements
+```{r}
+x <- ymd_hms(c("2012-10-25 01:13:46",
+               "2015-04-23 15:11:23"), tz = "")
+year(x)
+month(x)
+day(x)
+weekdays(x)
+```
+
+## Time Elements
+
+```{r}
+x <- ymd_hms(c("2012-10-25 01:13:46",
+               "2015-04-23 15:11:23"), tz = "")
+minute(x)
+second(x)
+hour(x)
+week(x)
+```
+
+
+
+# Visualizing Dates
+
+
+## Reading in the Data
+
+```{r, warning=FALSE, message=FALSE}
+library(readr)
+storm <- read_csv("../data/storm_events_2002.csv.gz", progress = FALSE)
+names(storm)
+```
+
+Let's take a look at the BEGIN_DATE_TIME and DEATHS_DIRECT variables
+
+```{r,message=FALSE}
+library(dplyr)
+select(storm, BEGIN_DATE_TIME, EVENT_TYPE, DEATHS_DIRECT)
+```
+
+We can first convert the date/time to a date/time R object.
+
+```{r}
+storm_sub <- select(storm, BEGIN_DATE_TIME, EVENT_TYPE, DEATHS_DIRECT) %>%
+  mutate(begin = dmy_hms(BEGIN_DATE_TIME)) %>%
+  rename(type = EVENT_TYPE,
+         deaths = DEATHS_DIRECT) %>%
+  select(begin, type, deaths)
+storm_sub
+```
+
+
+## Histograms of Dates/Times
+
+
+We can make a histogram of the dates/times to get a sense of when storm events occur.
+
+```{r}
+library(ggplot2)
+storm_sub %>%
+  ggplot(aes(x = begin)) + 
+  geom_histogram(bins = 20) + 
+  theme_bw()
+```
+
+We can group by event type too.
+
+```{r,fig.width=12,fig.height=12}
+library(ggplot2)
+storm_sub %>%
+  ggplot(aes(x = begin)) + 
+  facet_wrap(~ type) + 
+  geom_histogram(bins = 20) + 
+  theme_bw() + 
+  theme(axis.text.x.bottom = element_text(angle = 90))
+```
+
+## Scatterplots of Dates/Times
+
+```{r}
+storm_sub %>%
+  ggplot(aes(begin, deaths)) + 
+  geom_point()
+```
+
+If we focus on a single month, the x-axis adapts.
+
+```{r}
+storm_sub %>%
+  filter(month(begin) == 6) %>%
+  ggplot(aes(begin, deaths)) + 
+  geom_point()
+
+```
+
+Similarly, we can focus on a single day.
+
+```{r}
+storm_sub %>%
+  filter(month(begin) == 6, day(begin) == 16) %>%
+  ggplot(aes(begin, deaths)) + 
+  geom_point()
+
+```
+
+# Summary
+
+- Dates and times have special classes in R that allow for numerical and statistical calculations
+
+- Dates use the `Date` class
+
+- Times use the `POSIXct` and `POSIXlt` class
+
+- Character strings can be coerced to Date/Time classes using the `ymd()` and `ymd_hms()` functions. In strange cases, you can use the `strptime()`or the `as.Date()` functions.
+
+- The `lubridate` package is essential for manipulating date/time data
+
+- Both `plot` and `ggplot` "know" about dates and times and will handle axis labels appropriately
+
