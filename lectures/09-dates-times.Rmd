@@ -73,6 +73,16 @@ dmy("13-09-2016")  ## Europe
 ```
 All of the above are valid and lead to the exact same object.
 
+
+Even if the individual dates are formatted differently, `ymd()` can usually figure it out.
+
+```{r}
+x <- c("2016-04-05", 
+       "2016/05/06",
+       "2016,10,4")
+ymd(x)
+```
+
 # Times in R
 
 Times are represented using the `POSIXct` or the `POSIXlt` class
@@ -89,6 +99,9 @@ x <- ymd_hms("2019-10-03 13:30:00")
 class(x)
 unclass(x)
 ```
+
+
+If you want to know more about the international date/time standard, you can read about [ISO Standard 8601](https://en.wikipedia.org/wiki/ISO_8601).
 
 ## Inputing Time Data
 
@@ -111,6 +124,12 @@ Time zones were created to make your data analyses more difficult.
 * Better to specify time zone when possible to avoid ambiguity
 
 You can go to Wikipedia to find the [list of time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+
+* Daylight savings time
+
+* Some states are in two time zones
+
+* Southern hemisphere is opposite
 
 
 # Specifying Times in R
@@ -170,11 +189,19 @@ x <- ymd("2012-03-01")
 y <- ymd("2012-02-28")
 x - y
 ```
-Time zones!
+
+
+Beware of time zones!
 ```{r}
 x <- ymd_hms("2012-10-25 01:00:00", tz = "")
 y <- ymd_hms("2012-10-25 06:00:00", tz = "GMT")
 y - x
+```
+
+There are also *leap seconds*.
+
+```{r}
+.leap.seconds
 ```
 
 # Extracting Elements of Dates/Times

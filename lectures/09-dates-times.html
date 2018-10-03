@@ -295,6 +295,12 @@ x</code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">dmy</span>(<span class="st">&quot;13-09-2016&quot;</span>)  ## Europe</code></pre></div>
 <pre><code>[1] &quot;2016-09-13&quot;</code></pre>
 <p>All of the above are valid and lead to the exact same object.</p>
+<p>Even if the individual dates are formatted differently, <code>ymd()</code> can usually figure it out.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">x &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;2016-04-05&quot;</span>, 
+       <span class="st">&quot;2016/05/06&quot;</span>,
+       <span class="st">&quot;2016,10,4&quot;</span>)
+<span class="kw">ymd</span>(x)</code></pre></div>
+<pre><code>[1] &quot;2016-04-05&quot; &quot;2016-05-06&quot; &quot;2016-10-04&quot;</code></pre>
 </div>
 </div>
 <div id="times-in-r" class="section level1">
@@ -312,6 +318,7 @@ x</code></pre></div>
 <pre><code>[1] 1570109400
 attr(,&quot;tzone&quot;)
 [1] &quot;UTC&quot;</code></pre>
+<p>If you want to know more about the international date/time standard, you can read about <a href="https://en.wikipedia.org/wiki/ISO_8601">ISO Standard 8601</a>.</p>
 <div id="inputing-time-data" class="section level2">
 <h2>Inputing Time Data</h2>
 <p>Times can be coerced from a character string with <code>ymd_hms()</code></p>
@@ -332,6 +339,11 @@ attr(,&quot;tzone&quot;)
 <li><p>Better to specify time zone when possible to avoid ambiguity</p></li>
 </ul>
 <p>You can go to Wikipedia to find the <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">list of time zones</a></p>
+<ul>
+<li><p>Daylight savings time</p></li>
+<li><p>Some states are in two time zones</p></li>
+<li><p>Southern hemisphere is opposite</p></li>
+</ul>
 </div>
 <div id="specifying-times-in-r" class="section level1">
 <h1>Specifying Times in R</h1>
@@ -377,11 +389,27 @@ y</code></pre></div>
 y &lt;-<span class="st"> </span><span class="kw">ymd</span>(<span class="st">&quot;2012-02-28&quot;</span>)
 x <span class="op">-</span><span class="st"> </span>y</code></pre></div>
 <pre><code>Time difference of 2 days</code></pre>
-<p>Time zones!</p>
+<p>Beware of time zones!</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">x &lt;-<span class="st"> </span><span class="kw">ymd_hms</span>(<span class="st">&quot;2012-10-25 01:00:00&quot;</span>, <span class="dt">tz =</span> <span class="st">&quot;&quot;</span>)
 y &lt;-<span class="st"> </span><span class="kw">ymd_hms</span>(<span class="st">&quot;2012-10-25 06:00:00&quot;</span>, <span class="dt">tz =</span> <span class="st">&quot;GMT&quot;</span>)
 y <span class="op">-</span><span class="st"> </span>x</code></pre></div>
 <pre><code>Time difference of 1 hours</code></pre>
+<p>There are also <em>leap seconds</em>.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">.leap.seconds</code></pre></div>
+<pre><code> [1] &quot;1972-06-30 20:00:00 EDT&quot; &quot;1972-12-31 19:00:00 EST&quot;
+ [3] &quot;1973-12-31 19:00:00 EST&quot; &quot;1974-12-31 19:00:00 EST&quot;
+ [5] &quot;1975-12-31 19:00:00 EST&quot; &quot;1976-12-31 19:00:00 EST&quot;
+ [7] &quot;1977-12-31 19:00:00 EST&quot; &quot;1978-12-31 19:00:00 EST&quot;
+ [9] &quot;1979-12-31 19:00:00 EST&quot; &quot;1981-06-30 20:00:00 EDT&quot;
+[11] &quot;1982-06-30 20:00:00 EDT&quot; &quot;1983-06-30 20:00:00 EDT&quot;
+[13] &quot;1985-06-30 20:00:00 EDT&quot; &quot;1987-12-31 19:00:00 EST&quot;
+[15] &quot;1989-12-31 19:00:00 EST&quot; &quot;1990-12-31 19:00:00 EST&quot;
+[17] &quot;1992-06-30 20:00:00 EDT&quot; &quot;1993-06-30 20:00:00 EDT&quot;
+[19] &quot;1994-06-30 20:00:00 EDT&quot; &quot;1995-12-31 19:00:00 EST&quot;
+[21] &quot;1997-06-30 20:00:00 EDT&quot; &quot;1998-12-31 19:00:00 EST&quot;
+[23] &quot;2005-12-31 19:00:00 EST&quot; &quot;2008-12-31 19:00:00 EST&quot;
+[25] &quot;2012-06-30 20:00:00 EDT&quot; &quot;2015-06-30 20:00:00 EDT&quot;
+[27] &quot;2016-12-31 19:00:00 EST&quot;</code></pre>
 </div>
 </div>
 <div id="extracting-elements-of-datestimes" class="section level1">
