@@ -164,7 +164,7 @@ You will likely not need all of it.
 
 ### Problem 2.1 
 
-Just to start, download the data for 2004,
+Just to start, download the data for 2004 (these files are labeled `StormEvents_details-*`),
 read the data into R and take a look at it.
 You will see that the storm event data have a 
 column for the year and date/time of each event.
