@@ -388,8 +388,8 @@ Cacambo, and he loved his master, because his master was a very good
 
 wish that he were here. Certainly, if all things are good, it is in El</code></pre>
 </div>
-<div id="parentheized-subexpression" class="section level3">
-<h3>Parentheized Subexpression</h3>
+<div id="parenthesized-subexpression" class="section level3">
+<h3>Parenthesized Subexpression</h3>
 <ul>
 <li><code>()</code> can be used to “capture” subexpressions</li>
 </ul>
@@ -419,8 +419,8 @@ skipper (were he even to rob him like the Surinam captain) to conduct
 <div id="grep" class="section level3">
 <h3>grep</h3>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(readr)
-commits &lt;-<span class="st"> </span><span class="kw">read_lines</span>(<span class="st">&quot;../data/commit_logs_strip.txt.bz2&quot;</span>)
-<span class="kw">head</span>(commits)</code></pre></div>
+commit_log &lt;-<span class="st"> </span><span class="kw">read_lines</span>(<span class="st">&quot;../data/commit_logs_strip.txt.bz2&quot;</span>)
+<span class="kw">head</span>(commit_log)</code></pre></div>
 <pre><code>[1] &quot;commit 7f6ef08e80191712a5eb0d75c42931466e7bbe73&quot;
 [2] &quot;Author: ZchMr &lt;zc@.&gt;&quot;                           
 [3] &quot;Date:   Wed Oct 1 16:55:12 2014 -0400&quot;          
@@ -428,13 +428,13 @@ commits &lt;-<span class="st"> </span><span class="kw">read_lines</span>(<span c
 [5] &quot;    date changes to pages/tickets&quot;              
 [6] &quot;&quot;                                               </code></pre>
 <p>How many commits are there?</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">g &lt;-<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;^commit&quot;</span>, commits)
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">g &lt;-<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;^commit&quot;</span>, commit_log)
 <span class="kw">head</span>(g)</code></pre></div>
 <pre><code>[1]   1  64 179 208 246 275</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">length</span>(g)</code></pre></div>
 <pre><code>[1] 2384</code></pre>
 <p>Sometimes you want <code>grep()</code> to return the value instead of the index</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">g &lt;-<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;^commit&quot;</span>, commits, <span class="dt">value =</span> <span class="ot">TRUE</span>)
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">g &lt;-<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;^commit&quot;</span>, commit_log, <span class="dt">value =</span> <span class="ot">TRUE</span>)
 <span class="kw">head</span>(g)</code></pre></div>
 <pre><code>[1] &quot;commit 7f6ef08e80191712a5eb0d75c42931466e7bbe73&quot;
 [2] &quot;commit 6fe5d43383d50c698993c9b46b33f08f4897c70f&quot;
@@ -443,7 +443,7 @@ commits &lt;-<span class="st"> </span><span class="kw">read_lines</span>(<span c
 [5] &quot;commit 45607de7dceedf44061f60024f9ddae99aeafb80&quot;
 [6] &quot;commit ceb99122b6813e21067867f9cc16e62a2505adf2&quot;</code></pre>
 <p>Who are the authors of these commits?</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">g &lt;-<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;^Author&quot;</span>, commits, <span class="dt">value =</span> <span class="ot">TRUE</span>, <span class="dt">perl =</span> <span class="ot">TRUE</span>)
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">g &lt;-<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;^Author&quot;</span>, commit_log, <span class="dt">value =</span> <span class="ot">TRUE</span>, <span class="dt">perl =</span> <span class="ot">TRUE</span>)
 <span class="kw">head</span>(g)</code></pre></div>
 <pre><code>[1] &quot;Author: ZchMr &lt;zc@.&gt;&quot; &quot;Author: ZchMr &lt;zc@.&gt;&quot; &quot;Author: DvdG &lt;wh@.&gt;&quot; 
 [4] &quot;Author: DvdG &lt;wh@.&gt;&quot;  &quot;Author: DvdG &lt;wh@.&gt;&quot;  &quot;Author: DvdG &lt;wh@.&gt;&quot; </code></pre>
@@ -453,15 +453,22 @@ commits &lt;-<span class="st"> </span><span class="kw">read_lines</span>(<span c
 <div id="grepl" class="section level3">
 <h3>grepl</h3>
 <p>By default, <code>grep()</code> returns the <em>indices</em> into the character vector where the regex pattern matches.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">head</span>(state.name)</code></pre></div>
-<pre><code>[1] &quot;Alabama&quot;    &quot;Alaska&quot;     &quot;Arizona&quot;    &quot;Arkansas&quot;   &quot;California&quot;
-[6] &quot;Colorado&quot;  </code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">grep</span>(<span class="st">&quot;^New&quot;</span>, state.name)</code></pre></div>
-<pre><code>[1] 29 30 31 32</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">g &lt;-<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;^Author&quot;</span>, commit_log[<span class="dv">1</span><span class="op">:</span><span class="dv">100</span>])
+g</code></pre></div>
+<pre><code>[1]  2 65</code></pre>
 <p><code>grepl()</code> returns a logical vector indicating which element matches.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">i &lt;-<span class="st"> </span><span class="kw">grepl</span>(<span class="st">&quot;^New&quot;</span>, state.name)
-<span class="kw">head</span>(i, <span class="dv">10</span>)</code></pre></div>
-<pre><code> [1] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">i &lt;-<span class="st"> </span><span class="kw">grepl</span>(<span class="st">&quot;^Author&quot;</span>, commit_log[<span class="dv">1</span><span class="op">:</span><span class="dv">100</span>])
+i</code></pre></div>
+<pre><code>  [1] FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+ [12] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+ [23] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+ [34] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+ [45] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+ [56] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE
+ [67] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+ [78] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+ [89] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[100] FALSE</code></pre>
 <p>Some limitations of <code>grep()</code>:</p>
 <ul>
 <li><p>The <code>grep()</code> function tells you which strings in a character vector match a certain pattern but it doesn’t tell you exactly where the match occurs or what the match is (for a more complicated regex).</p></li>
@@ -472,23 +479,20 @@ commits &lt;-<span class="st"> </span><span class="kw">read_lines</span>(<span c
 <div id="regexpr" class="section level3">
 <h3>regexpr</h3>
 <p>How can we obtain the email addresses of the authors?</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">commits[<span class="dv">12</span><span class="op">:</span><span class="dv">24</span>]</code></pre></div>
-<pre><code> [1] &quot;               &lt;div class=\&quot;event-listing\&quot; ng-repeat=\&quot;parent in ticketSummary\&quot;&gt;&quot;                                                                                                                                                                                                                                                                                 
- [2] &quot;                 &lt;h2&gt;@{{ parent[0].parent.name }} &lt;a class=\&quot;pull-right\&quot; ng-href=\&quot;{{URL::action('Bts\\BoxOffice\\BoxOfficeController@getProducts', array($id))}}/@{{parent[0].parent_id}}/@{{parent[0].parent_type.substr(parent[0].parent_type.lastIndexOf('\\\\')+1).toLowerCase()}}?type=@{{parent[0].product.type}}\&quot;&gt;&lt;i class=\&quot;fa fa-pencil\&quot;&gt;&lt;/i&gt;&lt;/a&gt;&lt;/h2&gt;&quot;
- [3] &quot;                 &lt;h5 ng-if=\&quot;parent[0].parent.start\&quot;&gt;@{{ moment(parent[0].parent.start.date, \&quot;YYYY-MM-DD HH:mm:ss\&quot;).format(\&quot;dddd, MMMM Do YYYY, h:mm a\&quot;) }}&lt;/h5&gt;&quot;                                                                                                                                                                                              
- [4] &quot;-                &lt;h5 ng-if=\&quot;parent[0].date\&quot;&gt;@{{moment(parent[0].date).format(\&quot;dddd, MMMM Do YYYY\&quot;)}} &lt;small ng-if=\&quot;parent[0].start\&quot;&gt;(@{{parent[0].start}})&lt;/small&gt;&lt;h5&gt;&quot;                                                                                                                                                                                       
- [5] &quot;+                &lt;h5 ng-if=\&quot;parent[0].date\&quot;&gt;@{{moment(parent[0].date).format(\&quot;dddd, MMMM D, YYYY\&quot;)}} &lt;small ng-if=\&quot;parent[0].start\&quot;&gt;(@{{parent[0].start}})&lt;/small&gt;&lt;h5&gt;&quot;                                                                                                                                                                                       
- [6] &quot;                 &lt;table class=\&quot;table table-review\&quot;&gt;&quot;                                                                                                                                                                                                                                                                                                              
- [7] &quot;                   &lt;tbody&gt;&quot;                                                                                                                                                                                                                                                                                                                                         
- [8] &quot;                     &lt;tr ng-repeat=\&quot;ticket in parent\&quot;&gt;&quot;                                                                                                                                                                                                                                                                                                           
- [9] &quot;diff --git a/workbench/bts/frontend/src/views/checkout/review.blade.php b/workbench/bts/frontend/src/views/checkout/review.blade.php&quot;                                                                                                                                                                                                                               
-[10] &quot;index b06ed77..1be453b 100644&quot;                                                                                                                                                                                                                                                                                                                                      
-[11] &quot;--- a/workbench/bts/frontend/src/views/checkout/review.blade.php&quot;                                                                                                                                                                                                                                                                                                   
-[12] &quot;+++ b/workbench/bts/frontend/src/views/checkout/review.blade.php&quot;                                                                                                                                                                                                                                                                                                   
-[13] &quot;@@ -48,7 +48,7 @@&quot;                                                                                                                                                                                                                                                                                                                                                  </code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">head</span>(commit_log, <span class="dv">10</span>)</code></pre></div>
+<pre><code> [1] &quot;commit 7f6ef08e80191712a5eb0d75c42931466e7bbe73&quot;                                                                     
+ [2] &quot;Author: ZchMr &lt;zc@.&gt;&quot;                                                                                                
+ [3] &quot;Date:   Wed Oct 1 16:55:12 2014 -0400&quot;                                                                               
+ [4] &quot;&quot;                                                                                                                    
+ [5] &quot;    date changes to pages/tickets&quot;                                                                                   
+ [6] &quot;&quot;                                                                                                                    
+ [7] &quot;diff --git a/workbench/bts/boxoffice/src/views/review.blade.php b/workbench/bts/boxoffice/src/views/review.blade.php&quot;
+ [8] &quot;index 0967709..6900b84 100644&quot;                                                                                       
+ [9] &quot;--- a/workbench/bts/boxoffice/src/views/review.blade.php&quot;                                                            
+[10] &quot;+++ b/workbench/bts/boxoffice/src/views/review.blade.php&quot;                                                            </code></pre>
 <p>What if we use the regex <code>&lt;(.*)&gt;</code> and search for that?</p>
 <p>We need to search the Author line for a pattern. We can first <code>grep</code> the Author lines and then search for a pattern.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">author &lt;-<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;^Author:&quot;</span>, commits, <span class="dt">value =</span> <span class="ot">TRUE</span>)
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">author &lt;-<span class="st"> </span><span class="kw">grep</span>(<span class="st">&quot;^Author:&quot;</span>, commit_log, <span class="dt">value =</span> <span class="ot">TRUE</span>, <span class="dt">perl =</span> <span class="ot">TRUE</span>)
 <span class="kw">head</span>(author, <span class="dv">3</span>)</code></pre></div>
 <pre><code>[1] &quot;Author: ZchMr &lt;zc@.&gt;&quot; &quot;Author: ZchMr &lt;zc@.&gt;&quot; &quot;Author: DvdG &lt;wh@.&gt;&quot; </code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">r &lt;-<span class="st"> </span><span class="kw">regexpr</span>(<span class="st">&quot;&lt;.*&gt;&quot;</span>, author)
@@ -551,12 +555,33 @@ attr(,&quot;useBytes&quot;)
 <pre><code>[[1]]
 [1] &quot;Author: ZchMr &lt;zc@.&gt;&quot; &quot;zc@.&quot;                </code></pre>
 <p>When were all of the commits made?</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">r &lt;-<span class="st"> </span><span class="kw">regexec</span>(<span class="st">&quot;^Date: +(.*)$&quot;</span>, commits, <span class="dt">perl =</span> <span class="ot">TRUE</span>)
-m &lt;-<span class="st"> </span><span class="kw">regmatches</span>(commits, r)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">r &lt;-<span class="st"> </span><span class="kw">regexec</span>(<span class="st">&quot;^Date: +(.*)$&quot;</span>, commit_log, <span class="dt">perl =</span> <span class="ot">TRUE</span>)
+m &lt;-<span class="st"> </span><span class="kw">regmatches</span>(commit_log, r)
+<span class="kw">head</span>(m)</code></pre></div>
+<pre><code>[[1]]
+character(0)
+
+[[2]]
+character(0)
+
+[[3]]
+[1] &quot;Date:   Wed Oct 1 16:55:12 2014 -0400&quot;
+[2] &quot;Wed Oct 1 16:55:12 2014 -0400&quot;        
+
+[[4]]
+character(0)
+
+[[5]]
+character(0)
+
+[[6]]
+character(0)</code></pre>
 <p>Now we can subset the elements that match</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(purrr)
 u &lt;-<span class="st"> </span><span class="kw">map_int</span>(m, length) <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span>
-<span class="kw">head</span>(m[u])</code></pre></div>
+<span class="kw">str</span>(u)</code></pre></div>
+<pre><code> logi [1:7758154] FALSE FALSE TRUE FALSE FALSE FALSE ...</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">head</span>(m[u])</code></pre></div>
 <pre><code>[[1]]
 [1] &quot;Date:   Wed Oct 1 16:55:12 2014 -0400&quot;
 [2] &quot;Wed Oct 1 16:55:12 2014 -0400&quot;        
@@ -584,7 +609,13 @@ u &lt;-<span class="st"> </span><span class="kw">map_int</span>(m, length) <span
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(lubridate)
 dates &lt;-<span class="st"> </span><span class="kw">map_chr</span>(m[u], <span class="dv">2</span>) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">parse_date_time</span>(<span class="st">&quot;abd HMS Y z&quot;</span>, <span class="dt">tz =</span> <span class="st">&quot;America/New_York&quot;</span>,
-                  <span class="dt">quiet =</span> <span class="ot">TRUE</span>)</code></pre></div>
+                  <span class="dt">quiet =</span> <span class="ot">TRUE</span>)
+<span class="kw">str</span>(dates)</code></pre></div>
+<pre><code> POSIXct[1:2384], format: &quot;2014-10-01 16:55:12&quot; &quot;2014-10-01 16:14:22&quot; ...</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">head</span>(dates)</code></pre></div>
+<pre><code>[1] &quot;2014-10-01 16:55:12 EDT&quot; &quot;2014-10-01 16:14:22 EDT&quot;
+[3] &quot;2014-10-01 14:43:11 EDT&quot; &quot;2014-10-01 14:42:44 EDT&quot;
+[5] &quot;2014-10-01 13:23:31 EDT&quot; &quot;2014-10-01 13:12:39 EDT&quot;</code></pre>
 </div>
 <div id="histogram" class="section level3">
 <h3>Histogram</h3>

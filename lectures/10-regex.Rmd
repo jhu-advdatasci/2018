@@ -258,15 +258,15 @@ The primary R functions for dealing with regular expressions are
 
 ```{r loaddata,cache=TRUE}
 library(readr)
-commits <- read_lines("../data/commit_logs_strip.txt.bz2")
-head(commits)
+commit_log <- read_lines("../data/commit_logs_strip.txt.bz2")
+head(commit_log)
 ```
 
 
 How many commits are there?
 
 ```{r grep1,cache=TRUE}
-g <- grep("^commit", commits)
+g <- grep("^commit", commit_log)
 head(g)
 length(g)
 ```
@@ -275,7 +275,7 @@ length(g)
 Sometimes you want `grep()` to return the value instead of the index
 
 ```{r grep2,cache=TRUE}
-g <- grep("^commit", commits, value = TRUE)
+g <- grep("^commit", commit_log, value = TRUE)
 head(g)
 ```
 
@@ -283,7 +283,7 @@ head(g)
 Who are the authors of these commits?
 
 ```{r,cache=TRUE,warning=FALSE}
-g <- grep("^Author", commits, value = TRUE, perl = TRUE)
+g <- grep("^Author", commit_log, value = TRUE, perl = TRUE)
 head(g)
 length(unique(g))
 ```
@@ -294,15 +294,15 @@ length(unique(g))
 By default, `grep()` returns the *indices* into the character vector where the regex pattern matches.
 
 ```{r}
-head(state.name)
-grep("^New", state.name)
+g <- grep("^Author", commit_log[1:100])
+g
 ```
 
 `grepl()` returns a logical vector indicating which element matches.
 
 ```{r}
-i <- grepl("^New", state.name)
-head(i, 10)
+i <- grepl("^Author", commit_log[1:100])
+i
 ```
 
 
@@ -319,7 +319,7 @@ Some limitations of `grep()`:
 How can we obtain the email addresses of the authors?
 
 ```{r,cache=TRUE}
-commits[12:24]
+head(commit_log, 10)
 ```
 
 What if we use the regex `<(.*)>` and search for that?
@@ -327,8 +327,8 @@ What if we use the regex `<(.*)>` and search for that?
 
 We need to search the Author line for a pattern. We can first `grep` the Author lines and then search for a pattern.
 
-```{r,cache=TRUE}
-author <- grep("^Author:", commits, value = TRUE)
+```{r,cache=TRUE,warning=FALSE}
+author <- grep("^Author:", commit_log, value = TRUE, perl = TRUE)
 head(author, 3)
 r <- regexpr("<.*>", author)
 str(r)
@@ -408,8 +408,9 @@ regmatches(author[1], r)
 When were all of the commits made?
 
 ```{r,cache=TRUE,warning=FALSE}
-r <- regexec("^Date: +(.*)$", commits, perl = TRUE)
-m <- regmatches(commits, r)
+r <- regexec("^Date: +(.*)$", commit_log, perl = TRUE)
+m <- regmatches(commit_log, r)
+head(m)
 ```
 
 
@@ -418,6 +419,7 @@ Now we can subset the elements that match
 ```{r,cache=TRUE}
 library(purrr)
 u <- map_int(m, length) > 0
+str(u)
 head(m[u])
 ```
 
@@ -428,6 +430,8 @@ library(lubridate)
 dates <- map_chr(m[u], 2) %>%
   parse_date_time("abd HMS Y z", tz = "America/New_York",
                   quiet = TRUE)
+str(dates)
+head(dates)
 ```
 
 ### Histogram
