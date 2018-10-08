@@ -1,0 +1,469 @@
+---
+title: "Regular Expressions in R"
+date: October 8, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+```{r, include=FALSE}
+options(tibble.print_min = 5)
+knitr::opts_chunk$set(comment = NA, collapse = FALSE)
+```
+
+
+## What are Regular Expressions?
+
+-   Regular expressions can be thought of as a combination of literals
+    and *metacharacters*
+
+-   To draw an analogy with natural language, think of literal text
+    forming the words of this language, and the metacharacters defining
+    its grammar
+
+-   Regular expressions have a rich set of metacharacters
+
+
+## Primary Metacharacters
+
+The world of regular expressions is large, but there are few key metacharacters that get used often.
+
+* Literals
+
+* Beginning/End of line
+
+* Character classes
+
+* Repetition
+
+* Parenthesized subexpression
+
+
+### Literals
+
+Literals are just sequences of characters. They have no special meaning and are interpreted by R *literally*.
+
+```{r,echo=FALSE}
+library(readr)
+book <- read_lines("../data/book.txt")
+```
+
+
+The word "brother" is a literal
+
+```{r,echo=FALSE,message=FALSE}
+set.seed(3)
+library(dplyr)
+grep("brother", book, value = TRUE) %>%
+  sample(5) %>%
+  writeLines(sep = "\n\n")
+```
+
+So is "Brother" (but not the same!).
+
+```{r,echo=FALSE,message=FALSE}
+set.seed(4)
+grep("Brother", book, value = TRUE, perl = TRUE) %>%
+  writeLines(sep = "\n\n")
+```
+
+### Beginning/End of Line
+
+* `^` indicates match at the **beginning** of a line
+* `$` indicates match at the **end** of a line
+
+`^The`
+
+```{r,echo=FALSE}
+set.seed(44)
+grep("^The", book, value = TRUE) %>%
+  sample(5) %>%
+  writeLines(sep = "\n\n")
+```
+
+`the$`
+
+```{r,echo=FALSE}
+set.seed(44)
+grep("the$", book, value = TRUE) %>%
+  sample(5) %>%
+  writeLines(sep = "\n\n")
+```
+
+
+### Character Classes
+
+The square brackets `[` and `]` indicate classes of characters to search for.
+
+`[a-z]`
+```{r,echo=FALSE}
+set.seed(44)
+grep("[a-z]", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+`[A-Z]`
+```{r,echo=FALSE}
+set.seed(44)
+grep("[A-Z]", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+`[0-9]`
+```{r,echo=FALSE}
+set.seed(44)
+grep("[0-9]", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+`[Tt]he `
+```{r,echo=FALSE}
+set.seed(44)
+grep("[Tt]he", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+You can now combine character classes with begninning/end of line markers.
+
+`^[Tt]he`
+```{r,echo=FALSE}
+set.seed(44)
+grep("^[Tt]he", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+
+### Matching Anything
+
+The `.` is used to match anything, including nothing.
+
+`9.1`
+
+```{r,echo=FALSE}
+set.seed(44)
+grep("9.1", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+
+
+### Repetition
+
+
+* The `+` is used to indicate "repeat the immediately preceding symbol 1 or more times"
+
+* The `*` is used to indicate "repeat the immediately preceding symbol 0 or more times"
+
+* `{}` can be used to indicate a range of repetition
+
+
+`[0-9]+`
+
+```{r,echo=FALSE}
+set.seed(4090)
+grep("[0-9]+", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+
+`2[0-9]*`
+
+```{r,echo=FALSE}
+set.seed(40)
+grep("2[0-9]*", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+
+`[0-9]{4,6}`
+
+```{r,echo=FALSE}
+set.seed(4090)
+grep("[0-9]{4,6}", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+
+` he .* good`
+
+```{r,echo=FALSE}
+set.seed(4090)
+grep(" he .* good", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+
+### Parenthesized Subexpression
+
+* `()` can be used to "capture" subexpressions
+
+
+`([0-9]+)\1`
+
+```{r,echo=FALSE}
+set.seed(4090)
+grep("([0-9]+)\\1", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+
+`\((.*)\)`
+
+```{r,echo=FALSE}
+set.seed(4090)
+grep("\\((.*)\\)", book, value = TRUE) %>%
+  sample(3) %>%
+  writeLines(sep = "\n\n")
+```
+
+
+
+
+## Regular Expression Functions
+
+The primary R functions for dealing with regular expressions are
+
+* `grep`, `grepl`: Search for matches of a regular
+  expression/pattern in a character vector; either return the indices
+  into the character vector that match, the strings that happen to
+  match, or a TRUE/FALSE vector indicating which elements match
+
+* `regexpr`, `gregexpr: Search a character vector for regular
+  expression matches and return the indices of the string where the
+  match begins and the length of the match
+
+* `sub`, `gsub`: Search a character vector for regular
+  expression matches and replace that match with another string
+
+* `regexec`: Easier to explain through demonstration.
+
+### grep
+
+```{r loaddata,cache=TRUE}
+library(readr)
+commits <- read_lines("../data/commit_logs_strip.txt.bz2")
+head(commits)
+```
+
+
+How many commits are there?
+
+```{r grep1,cache=TRUE}
+g <- grep("^commit", commits)
+head(g)
+length(g)
+```
+
+
+Sometimes you want `grep()` to return the value instead of the index
+
+```{r grep2,cache=TRUE}
+g <- grep("^commit", commits, value = TRUE)
+head(g)
+```
+
+
+Who are the authors of these commits?
+
+```{r,cache=TRUE,warning=FALSE}
+g <- grep("^Author", commits, value = TRUE, perl = TRUE)
+head(g)
+length(unique(g))
+```
+
+
+### grepl
+
+By default, `grep()` returns the *indices* into the character vector where the regex pattern matches.
+
+```{r}
+head(state.name)
+grep("^New", state.name)
+```
+
+`grepl()` returns a logical vector indicating which element matches.
+
+```{r}
+i <- grepl("^New", state.name)
+head(i, 10)
+```
+
+
+Some limitations of `grep()`:
+
+* The `grep()` function tells you which strings in a character vector match a certain pattern but it doesn’t tell you exactly where the match occurs or what the match is (for a more complicated regex).
+
+* The `regexpr()` function gives you the index into each string where the match begins and the length of the match for that string.
+
+* `regexpr()` only gives you the first match of the string (reading left to right). `gregexpr()` will give you all of the matches in a given string.
+
+### regexpr
+
+How can we obtain the email addresses of the authors?
+
+```{r,cache=TRUE}
+commits[12:24]
+```
+
+What if we use the regex `<(.*)>` and search for that?
+
+
+We need to search the Author line for a pattern. We can first `grep` the Author lines and then search for a pattern.
+
+```{r,cache=TRUE}
+author <- grep("^Author:", commits, value = TRUE)
+head(author, 3)
+r <- regexpr("<.*>", author)
+str(r)
+```
+
+
+* `regexpr()` returns a vector of integers indicating where the match starts
+
+* The attribute `match.length` indicates how long the match is
+
+* If there's no match, `regexpr()` returns `-1` with a `match.length` of `-1`.
+
+The obvious way to select out a match is to use the indices and the `substr()` function.
+
+```{r}
+substr(author[1], 15, 15 + 6 - 1)
+substr(author[3], 14, 14 + 6 - 1)
+```
+
+
+### regmatches
+
+We can also use the `regmatches()` function to just grab all of the matches at once.
+
+```{r,cache=TRUE}
+r <- regexpr("<.*>", author)
+m <- regmatches(author, r)
+head(m)
+```
+
+
+### sub/gsub
+
+But we still don't have actual email addresses. We need to remove the `<` and `>` characters. We can use the `sub()` function for that.
+
+```{r}
+sub("<", "", m[1:5])
+sub(">", "", m[1:5])
+```
+But we want to remove *both* `<` and `>`!
+
+
+We can use a regular expression in `sub()`.
+
+```{r}
+sub("<|>", "", m[1:5])
+```
+
+`gsub()` substitutes all occurrences of the regex (`g` is for "global").
+
+```{r}
+gsub("<|>", "", m[1:5])
+```
+
+
+### regexec
+
+The `regexec()` function can make the previous task a bit simpler by using *parenthesized sub-expressions*.
+
+```{r}
+author[1]
+```
+
+We can capture the email address portion of the line with parentheses.
+
+```{r}
+regexec("^Author: [^ ]+ <(.*)>", author[1])
+```
+
+
+```{r}
+r <- regexec("^Author: [^ ]+ <(.*)>", author[1])
+regmatches(author[1], r)
+```
+
+
+When were all of the commits made?
+
+```{r,cache=TRUE,warning=FALSE}
+r <- regexec("^Date: +(.*)$", commits, perl = TRUE)
+m <- regmatches(commits, r)
+```
+
+
+Now we can subset the elements that match
+
+```{r,cache=TRUE}
+library(purrr)
+u <- map_int(m, length) > 0
+head(m[u])
+```
+
+Finally, we can parse the dates/times.
+
+```{r,cache=TRUE}
+library(lubridate)
+dates <- map_chr(m[u], 2) %>%
+  parse_date_time("abd HMS Y z", tz = "America/New_York",
+                  quiet = TRUE)
+```
+
+### Histogram
+
+You can make a histogram of the dates
+
+```{r}
+hist(dates, "month", freq = TRUE)
+rug(dates)
+```
+
+## Summary
+
+The primary R functions for dealing with regular expressions are
+
+* `grep`, `grepl`: Search for matches of a regular expression/pattern in a character vector
+
+* `regexpr`, `gregexpr`: Search a character vector for regular expression matches and return the indices where the match begins; useful in conjunction with regmatches
+
+* `sub`, `gsub`: Search a character vector for regular expression matches and replace that match with another string
+
+* `regexec`: Gives you indices of parethensized sub-expressions.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
