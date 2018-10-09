@@ -1,0 +1,772 @@
+---
+title: Distance and Dimensionality Reduction
+date: Oct 10, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", 
+                      out.width = '90%')
+```
+
+First, we load a few R packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+# Motivation
+
+Let's say you have a set of $n$ observations
+$X_i = (X_{i1},...,X_{ip})$ for $i = (1, \ldots, n)$
+each with $p$ features. This data 
+may or may not be "high-dimensional" (or $p>>n$).
+Depending on your goal in the analysis, you will find
+_dimensionality reduction_ methods can be useful in 
+some of the following scenarios (not mutually 
+exclusive): 
+
+1. **Exploratory data analysis**
+
+As we have seen in class, visualizing data is one 
+of the most important part of data science. The 
+right visualization method may reveal problems with 
+the data that can render the results from a standard 
+analysis, although typically appropriate, completely 
+useless. It can also help us make us important
+discoveries.
+
+We have shown methods for visualizing univariate and 
+paired data, but if we want to visualize relationships
+between columns or between rows in data that is 
+high-dimensional, this can be complicated. For example, 
+if each observation has $p$=100 features, we would have
+to create plots that reveal relationships between 
+columns or between rows are more complicated due to 
+the high dimensionality of data  (e.g. what if there
+are strong correlations between the features?). For
+example, to compare each of the 100 features, we 
+would have to create ${p \choose 2} = 4950$ 
+scatter plots. Creating one single scatter plot of 
+the data is not possible due to high dimensionality. 
+
+Methods for _dimension reduction_ can be used to 
+preserve important characterisitics in the data, such
+as the distance between features or observations, but 
+with fewer dimensions, making data visualization (or 
+exploratory data analysis) feasible. 
+
+We will consider different methods for dimension 
+reduction, but the main approach we will discuss is 
+called _Principal Components Analysis_. The goal here 
+is to find a new set of multivariate
+variables that are uncorrelated and explain as much 
+variance as possible. 
+
+For our purposes, EDA is the primary reason we will be 
+using dimensionality reduction methods for this lecture. 
+
+2. **Data Compression** 
+
+Here we are interested in finding the best matrix 
+created with fewer variables (lower rank) that
+explains the original data.
+
+In the figure below, we see the using the first 
+principal component only really captures the difference
+between light and dark. As you increase the number of
+principal components, you see more detail in the image. 
+
+If you go far enough, you will recover an image that looks
+very similar to the original, but that is of a smaller 
+dimension than the original dataset. 
+
+```{r, echo=FALSE}
+knitr::include_graphics("http://www.sqlservercentral.com/Images/32947.jpg")
+```
+
+[image source](http://www.sqlservercentral.com/articles/R+Language/159578/)
+
+3. **Improve classification (hopefully)**
+
+We will get to this until term 2, so stayed 
+tuned! 
+
+
+## Motivating example of twin heights
+
+Here we use a data set with twin heights. We simulate 
+$n$=100 two-dimensional (or $p$=2 features) points that 
+represent heights of a pair of twins. For our purposes, 
+let's say we assume the number of features ($p$=2) is 
+too large (or too high-dimensional) and we want to 
+reduce the dimensions to $p$=1. 
+
+First, let's simulate the heights of pairs of twins. 
+
+```{r}
+set.seed(100)
+n <- 100
+lim <- c(60,78)
+X <- MASS::mvrnorm(n, c(69,69), 
+          matrix(c(9,9*0.92,9*0.92,9*1),2,2))
+head(X) 
+```
+
+Here we will motivate methods for dimensionality reduction
+by showing a transformation which permits us to approximate 
+the distance between two dimensional points with just one
+dimension. 
+
+Consider the first two observations (i.e. first rows) in our 
+dataset `X` (red points). 
+
+```{r}
+plot(X, xlab = "twin height 1", 
+     ylab = "twin height 2")
+points(X[1:2,], col="red", pch=16)
+lines(X[1:2,], col="red")
+```
+
+The distance between those two points is 
+```{r}
+a <- X[1,]
+b <- X[2,]
+sqrt(sum((a-b)^2)) # euclidean distance
+```
+
+Or we can calculate the Euclidean distance between 
+all observations pairwise using the `dist()` 
+function.
+
+```{r}
+d=dist(X, method = "euclidean")
+as.matrix(d)[1:5,2:5]
+```
+
+Note, if we center the data by removing the average 
+from both columns, we note the distance between 
+the pair of twins do not change. 
+
+Here we use the `scale()` function which has a 
+`center` and `scale` argument to remove the column 
+mean and divide by the standard deviation for each 
+column. You can also try the `sweep()` function
+for just centering or just scaling.
+
+```{r}
+X <- scale(X, center=TRUE, scale=FALSE)
+d=dist(X, method = "euclidean")
+as.matrix(d)[1:5,2:5]
+```
+
+Ok, let's start with the naive approach of simply removing one
+of the two dimensions. Let's compare the actual distances 
+to the distance computed with just one of the dimensions. 
+The plot below shows the comparison to the first dimension 
+(left) and to the second (right)
+
+```{r}
+par(mfrow=c(1,2))
+
+Z <- X[,1]
+plot(dist(X), dist(Z), 
+     xlab = "actual distance", 
+     ylab = "Using only first X column")
+abline(0,1, col = 2)
+
+Z <-X[,2]
+plot(dist(X), dist(Z), 
+     xlab = "actual distance", 
+     ylab = "Using only second X column")
+abline(0,1, col = 2)
+```
+
+We see the actual distance
+is generally underestimated using only 1 of the 2 
+columns of heights. This is actually to expected 
+since we are adding more things in the actual distance.
+If instead we average and use this distance, 
+
+$$d_{ij} = \sqrt{ \frac{1}{2} \sum_{p=1}^2 (X_{i,p}-X_{j,p})^2 }$$
+then we see the bias goes away
+
+```{r}
+Z <- X[,1]
+
+par(mfrow=c(1,1))
+plot(dist(X)/sqrt(2), dist(Z), 
+     xlab = "actual distance", 
+     ylab = "Using only first X column with scaling factor")
+abline(0,1, col = 2)
+```
+
+We also see there is a strong correlation. 
+Can we pick a one dimensional summary that makes 
+this correlation even stronger?
+
+```{r}
+cor(dist(X)/sqrt(2), dist(Z))
+```
+
+If we look back at the plot, and visualize a line between 
+any pair of points, the length of this line is the distance 
+between the two points. These lines tend to go along the 
+direction of the diagonal. Notice that if we instead plot  
+
+```{r, fig.width=10.5,fig.height=5.25}
+avg <- rowMeans(X) ## or (X[,1] + X[,2])/2
+diff <- X[,2] - X[,1]
+Z  <- cbind( avg, diff)
+
+par(mfrow=c(1,2))
+lim=c(-9,9)
+plot(X, xlim=lim, ylim=lim, 
+     main = "Twin height scatterplot", 
+     xlab = "Twin height 1",
+     ylab = "Twin height 2")
+points(X[1:2,], col="red", pch=16)
+lines(X[1:2,], col="red")
+
+plot(Z, xlim=lim, ylim=lim, 
+     xlab = "Mean", ylab = "Difference")
+points(Z[1:2,], col="red", pch=16)
+lines(Z[1:2,], col="red")
+```
+
+We see almost all the variation can be explained by 
+the `Mean` axes. This means that we can essentially 
+ignore the second dimension and not lose too much 
+information. If the line is completely flat, we 
+lose no information. If we use this transformation 
+of the data instead we get much higher correlation:
+
+```{r}
+par(mfrow=c(1,1))
+plot(dist(X)/sqrt(2), dist(Z[,1]))
+abline(0,1, col = 2)
+```
+
+```{r}
+cor(dist(X)/sqrt(2), dist(Z[,1]))
+```
+
+Note that each row of $X$ was transformed using a linear 
+transformation.
+
+If you are familiar with linear algebra we can 
+write the operation we just performed like this:
+
+$$
+Z = X A
+\mbox{ with }
+A = \,
+\begin{pmatrix}
+1/2&1\\
+1/2&-1\\
+\end{pmatrix}
+$$
+
+And that we can transform back by simply 
+multiplying by $A^{-1}$ as follows:
+
+$$
+X = Z A^{-1} 
+\mbox{ with }
+A^{-1} = \,
+\begin{pmatrix}
+1&1\\
+1/2&-1/2\\
+\end{pmatrix}
+$$
+
+**Note**: we can actually guarantee that 
+the distance scales remain the same if we re-scale the 
+columns of $A$ to assure that the sum of squares are 1:
+
+$$a_{1,1}^2 + a_{2,1}^2 = 1\mbox{ and } a_{2,1}^2 + a_{2,2}^2=1$$
+
+and the correlation of the columns is 0.
+In this particular example to achieve this, we multiply the
+first set of coefficients (first column of $A$) by $\sqrt{2}$
+and the second by $1\sqrt{2}$, then we get the same exact
+distance if we use both dimensions and a great approximation
+if we use both.
+
+```{r}
+avg <- rowMeans(X)*sqrt(2) ## or (X[,1] + X[,2])/2
+diff <- (X[,2] - X[,1])
+Z  <- cbind( avg, diff)
+
+par(mfrow=c(1,2))
+
+plot(dist(X), dist(Z), 
+     xlab = "actual distance", 
+     ylab = "Using both columns in Z")
+abline(0,1)
+
+plot(dist(X), dist(Z[,1]), 
+     xlab = "actual distance", 
+     ylab = "Using only first Z column")
+abline(0,1)
+```
+
+In this case $Z$ is called an orthogonal rotation 
+of $X$: it preserves the distances between points.
+
+Let's formalize this a bit more. 
+
+# Singular Value Decomposition (SVD)
+
+The singular value decomposition (SVD) is a generalization 
+of the algorithm we used in the motivational section. As 
+in the example, the SVD provides a transformation of the 
+original data. This transformation has some very useful properties. 
+
+The main result SVD provides is that we can write an 
+matrix $\mathbf{X}$ (of dimension $m \times n$) as
+
+$$\mathbf{U}^\top\mathbf{X} = \mathbf{DV}^\top$$
+
+With:
+
+* $\mathbf{U}$ is an $m \times p$ orthogonal matrix (left singular vectors)
+* $\mathbf{V}$ is an $n \times p$ orthogonal matrix (right singular vectors)
+* $\mathbf{D}$ is an $p \times p$ diagonal matrix (singular values)
+
+with $p=\mbox{min}(m,n)$. $\mathbf{U}^\top$ provides 
+a rotation of our data $\mathbf{X}$ that turns out to 
+be very useful because the variability of the columns of 
+$\mathbf{U}^\top \mathbf{X}$ (or $\mathbf{DV}^\top$) are decreasing.
+Because $\mathbf{U}$ is orthogonal, we can write the
+SVD like this: 
+
+$$\mathbf{X} = \mathbf{UDV}^\top$$
+
+Now we will apply a SVD to the motivating example 
+we have using the `svd()` function in R: 
+
+```{r}
+Y <- t(scale(X, center=TRUE)) 
+dim(Y)
+```
+
+Note, we rotated X to put the (p=2) features along rows 
+with n=100 observation along columns before applying `svd()`. 
+
+```{r}
+s <- svd(Y)
+```
+
+The `svd()` command returns the three matrices and only 
+the diagonal entries are returned for $\mathbf{D}$.
+
+```{r}
+str(s)
+```
+
+To obtain the principal components from the SVD, we 
+simply need the columns of the rotation
+$\mathbf{U}^\top\mathbf{X}$: 
+
+```{r}
+PCs = t(s$u) %*% Y
+dim(PCs)
+```
+
+We can plot the $n=100$ twin heights 
+along the principal components
+```{r}
+plot(PCs[1,],PCs[2,],ylim=c(-3,3))
+```
+
+Alternatively, we could have used 
+$\mathbf{DV}^\top$:
+
+```{r}
+PCs = diag(s$d) %*% t(s$v)
+plot(PCs[1,],PCs[2,],ylim=c(-3,3))
+```
+
+Another way of calculating the PCs is to use `prcomp()` 
+function.
+
+```{r}
+pc <- prcomp(scale(X,center=TRUE))
+str(pc)
+```
+
+The output `pc$x` contains the principal components
+
+```{r}
+plot(pc$x[,1], pc$x[,2], 
+     xlab="PC1", ylab="PC2", 
+     ylim=c(-3,3))
+```
+
+The PCs are the same as the right singular
+vectors when they are centered and scaled. 
+(signs of PCs are arbitrary)
+```{r}
+Y <- t(scale(X, center=TRUE, scale=TRUE)) 
+s <- svd(Y)
+pc.svd <- diag(s$d)%*%t(s$v)
+
+pc.prcomp <- prcomp(X, center=TRUE, scale=TRUE)
+
+plot(pc.prcomp$x[,1],-1*s$v[,1], 
+     xlab="PC1 using prcomp", 
+     ylab="Right singular vector 1")
+
+plot(pc.prcomp$x[,1], -1*t(pc.svd)[,1], 
+     xlab = "PC1 using prcomp", 
+     ylab = "PC1 using svd"); abline(0,1)
+
+
+```
+
+Cool! So we have now reduced the $p=2$ dimensions to 
+1 dimension that explains the most amount of variation. 
+
+OK, but how is this useful?
+
+I will admit in our super simple example, it is 
+not immediately obvious how incredibly useful 
+the SVD can be. So let's consider an example with more 
+than two features. In this example, we will greatly 
+reduce the dimension of $\mathbf{V}$ and still be able to 
+reconstruct $\mathbf{X}$.
+
+
+## Motivating example with the Written Digits
+
+When you write and mail a letter, the first thing 
+that happens to the letter when it's received in 
+the post office is that they are sorted by zip code:
+
+![](http://www.themainstreetmouse.com/wp-content/uploads/2013/08/letters.jpg)
+
+Originally humans had to sort these but today, 
+thanks to machine learning algorithms, a computer
+can read zip codes. The data is available in the 
+[data](https://github.com/jhu-advdatasci/2018/blob/master/data/hand-written-digits-train.csv)
+repository on the course github page. 
+
+
+```{r, message=FALSE}
+if(!exists("digits")) { 
+  digits <- read_csv("../data/hand-written-digits-train.csv") }
+
+digits <- digits %>% sample_n(5000) # take a random sample for purposes of the lecture
+X <- digits %>% select(-label) %>% as.matrix() # save just pixels
+dim(X)
+```
+
+Here are three images of written digits. 
+
+```{r}
+tmp <- lapply( c(1:3), function(i){
+    expand.grid(Row=1:28, Column=1:28) %>%  
+      mutate(id=i, label=digits$label[i],  
+             value = unlist(digits[i,-1])) })
+tmp <- Reduce(rbind, tmp)
+tmp %>% ggplot(aes(Row, Column, fill=value)) + 
+    geom_raster() + 
+    scale_y_reverse() +
+    scale_fill_gradient(low="white", high="black") +
+    facet_grid(.~label)
+```
+
+
+### What are the features? 
+
+Each image is converted into $28 \times 28$ pixels 
+and for each we obtain an grey scale intensity 
+between `0` (white) to `255` (black). This means
+one image has 784 (=28*28) features.
+
+We can see
+these values like this:
+
+```{r}
+tmp %>% ggplot(aes(Row, Column, fill=value)) + 
+    geom_point(pch=21,cex=2) + 
+    scale_y_reverse() +
+    scale_fill_gradient(low="white", high="black") +
+    facet_grid(.~label)
+```
+
+
+### What are the outcomes? 
+
+So for each digit $i$ we have an outcome $Y_i$
+which can be one of 10 categories: $0,1,2,3,4,5,6,7,8,9$
+and the features $X_{i,1}, \dots, X_{i,784}$ which 
+can take values from 0 to 255. We use bold face to 
+denote this vector of predictors 
+$\mathbf{X}_i = (X_{i,1}, \dots, X_{i,784})$.
+
+784 features a lot of features. I'm going to assume the 
+pixels close together are going to be somewhat correlated. 
+Is there any room for data reduction? Can we identify 
+a reduced set of features that can explain the variation 
+in the data?
+
+### How does this related to machine learning? (optional)
+
+Eventually when we get to machine learning in term 2,
+we will learn that in machine learning, the task is to 
+usually to build a predictor function, $f$, that converts 
+$\mathbf{X}$ into a prediction category 
+$ \hat{Y}_{i} = f(\mathbf{X}_i)$. We will use the methods for
+dimensionality reduction learned here to ask the 
+question: can we create simple machine learning algorithm
+with using fewer features?
+
+Stay tuned for more about this in term 2. 
+
+
+## Calculating the top PCs
+
+If you recall, the first PC is will explain the most 
+variation, the second PC will explain the second most 
+variation in the data, etc. 
+
+Because the pixels are so small we expect those to 
+be close to each other on the grid to be correlated, 
+meaning that dimension reduction should be possible.
+
+Let's take the SVD of $\mathbf{X}$. We only read in 
+5000 observations, so this shouldn't take very long, but 
+if you do this on the entire dataset, this will 
+take a little while. 
+
+```{r}
+dim(X) # 5000 observation, 784 features
+```
+
+Remember, we need to column center the data. We also
+will create a new variable $\mathbf{Y}$ to represent
+the standardized data that is also transposed
+(features along rows).
+```{r}
+Y <- t(scale(X,center=TRUE, scale=FALSE)) 
+dim(Y)
+```
+
+Now apply the `svd()` function to $\mathbf{Y}$.
+
+```{r}
+s <- svd(Y)
+str(s)
+```
+
+First note that we can in fact reconstruct
+$\mathbf{Y}$ using all the PCs:
+
+```{r}
+Yhat <- s$u %*% diag(s$d) %*% t(s$v)
+resid <- Y - Yhat
+max(abs(resid))
+```
+
+If we look at the eigenvalues in $\mathbf{D}$, 
+we see that the last few are quite close to 0.  
+
+```{r}
+plot(s$d)
+```
+
+This implies that the last columns of $\mathbf{V}$ have a very 
+small effect on the reconstruction of $\mathbf{X}$. To see this, 
+consider the extreme example in which the last entry 
+of $\mathbf{V}$ is 0. In this case the last column of 
+$\mathbf{V}$ is not needed at all. 
+
+Because of the way 
+the SVD is created, the columns of $\mathbf{V}$, have 
+less and less influence on the reconstruction of 
+$\mathbf{X}$. You commonly see this described as 
+"explaining less variance". This implies that for a 
+large matrix, by the time you get to the last columns, 
+it is possible that there is not much left to "explain".
+
+As an example, we will look at what happens if we remove
+the 100 last columns:
+
+```{r}
+k <- ncol(s$v)-100
+Yhat <- s$u[,1:k] %*% diag(s$d)[1:k,1:k] %*% t(s$v[,1:k])
+resid <- Y - Yhat 
+max(abs(resid))
+```
+
+The largest residual is practically 0, meaning that
+`Yhat` is practically the same as `Y`, yet we need 
+100 less dimensions to transmit the information.
+
+By looking at $\mathbf{D}$, we can see that, in this particular
+dataset, we can obtain a good approximation keeping
+only a subset of columns. The following plots are useful 
+for seeing how much of the variability is explained by each column:
+
+
+```{r}
+plot(s$d^2/sum(s$d^2)*100,
+     ylab="Percent variability explained")
+```
+
+We can also make a cumulative plot:
+
+```{r}
+plot(cumsum(s$d^2)/sum(s$d^2)*100,
+     ylab="Percent variability explained",
+     ylim=c(0,100), type="l")
+```
+
+Although we start with 784 dimensions, we can 
+approximate $X$ with just a few:
+
+```{r}
+k <- 100 ## out a possible 784
+Yhat <- s$u[,1:k] %*% diag(s$d)[1:k,1:k] %*% t(s$v[,1:k])
+resid <- Y - Yhat
+```
+
+Therefore, by using only half as many dimensions, 
+we retain most of the variability in our data:
+
+```{r}
+1 - var(as.vector(resid))/var(as.vector(Y))
+```
+
+We say that we explain 
+`r round((1 - var(as.vector(resid))/var(as.vector(Y)))*100)` 
+percent of the variability in our data with 
+`r k` PCs.
+
+Note that we can compute this proportion from 
+$\mathbf{D}$:
+
+```{r}
+sum(s$d[1:k]^2)/sum(s$d^2)
+```
+
+The entries of $\mathbf{D}$ therefore tell us how much each 
+PC contributes in term of variability explained.
+
+
+Another way of calculating the PCs is to use `prcomp()` 
+function.
+
+```{r}
+pc <- prcomp(X, center=TRUE)
+```
+
+The proportion of variance of the first ten PCs is quite
+high (almost 50%): 
+```{r}
+summary(pc)$importance[,1:10]
+```
+
+We can also plot the standard deviations:
+
+```{r}
+plot(pc$sdev)
+```
+
+or the more common plot variance explained:
+
+```{r}
+plot(pc$sdev^2 / sum(pc$sdev^2))
+```
+
+We can also see that the first two PCs will in fact be 
+quite informative. Here is a plot of the first two PCs:
+
+```{r}
+data.frame(PC1 = pc$x[,1], PC2 = pc$x[,2],
+           label=factor(digits$label)) %>%
+  ggplot(aes(PC1, PC2, fill=label))+
+  geom_point(cex=3, pch=21)
+```
+
+We can also "see" the linear combinations on the grid
+to get an idea of what is getting weighted:
+
+```{r}
+tmp <- lapply( c(1:4,781:784), function(i){
+    expand.grid(Row=1:28, Column=1:28) %>%
+      mutate(id=i, label=paste0("PC",i), 
+             value = pc$rotation[,i])
+})
+tmp <- Reduce(rbind, tmp)
+
+tmp %>% filter(id<5) %>%
+  ggplot(aes(Row, Column, fill=value)) +
+  geom_raster() +
+  scale_y_reverse() +
+  facet_wrap(~label, nrow = 1)
+```
+
+```{r}
+tmp %>% filter(id>5) %>%
+  ggplot(aes(Row, Column, fill=value)) +
+  geom_raster() +
+  scale_y_reverse() +
+  facet_wrap(~label, nrow = 1)
+```
+
+
+# Other methods of dimensionality reduction
+
+## Linear methods 
+
+1. Factor analysis. 
+
+This technique is best suited for situations where we 
+have highly correlated set of variables. It divides the 
+variables based on their correlation into different 
+groups, and represents each group with a factor. 
+Aims to identify latent sources of variation. Also typically
+tied to Gaussian distributions. 
+
+2. Independent Component Analysis (ICA)
+
+Similar to factor analysis, but relies on non-Gaussian 
+assumptions. We can use ICA to transform the data into
+independentcomponents which describe the data using 
+less number of components.
+
+## Non-linear methods
+
+1. Isometric feature mapping (ISOMAP)
+
+We use this technique when the data is strongly 
+non-linear.
+
+2. t-SNE
+
+This technique also works well when the data is 
+strongly non-linear. It works extremely well for 
+visualizations as well, but distances between points 
+are meaningless.
+
+3. UMAP
+
+This technique works well for high dimensional data.
+The run-time is shorter as compared to t-SNE.
+
+
+# Resources and sources of material 
+
+* [http://genomicsclass.github.io/book/pages/svd.html](http://genomicsclass.github.io/book/pages/svd.html)
