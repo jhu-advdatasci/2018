@@ -304,7 +304,7 @@ if we use both.
 
 ```{r}
 avg <- rowMeans(X)*sqrt(2) ## or (X[,1] + X[,2])/2
-diff <- (X[,2] - X[,1]) / sqrt(2)
+diff <- (X[,2] - X[,1])/sqrt(2)
 Z  <- cbind( avg, diff)
 
 par(mfrow=c(1,2))
@@ -733,38 +733,84 @@ tmp %>% filter(id>5) %>%
 
 1. Factor analysis. 
 
-This technique is best suited for situations where we 
+The main difference between PCA and factor 
+analyais is that PCA is identifying a linear 
+combination of variables, while factor analysis
+is a measurement model of a latent variable. 
+This latent variable cannot be directly measured
+with a single variable (e.g. intelligence, 
+social anxiety, soil health). Instead, it is seen 
+through the relationships it causes in a set 
+of $X$ variables. Best suited for situations where we 
 have highly correlated set of variables. It divides the 
 variables based on their correlation into different 
 groups, and represents each group with a factor. 
 Aims to identify latent sources of variation. Also typically
 tied to Gaussian distributions. 
 
+There are a ton of packages for factor analysis, but some
+you can try are `factor.pa()` function in the 
+[psych](https://cran.r-project.org/web/packages/psych/index.html) 
+R package, for `factanal()` in the 
+[stats](https://stat.ethz.ch/R-manual/R-patched/library/stats/html/factanal.html) 
+R package. 
+
 2. Independent Component Analysis (ICA)
 
-Similar to factor analysis, but relies on non-Gaussian 
-assumptions. We can use ICA to transform the data into
-independentcomponents which describe the data using 
-less number of components.
+While the goal in PCA is to find an orthogonal linear 
+transformation that maximizes the variance of the
+variables, the goal of ICA is to find the linear 
+transformation, which the basis vectors are statistically
+independent and non-Gaussian. Unlike PCA, the basis 
+vectors in ICA are neither orthogonal nor ranked in order.
+In this case, all components are equally important. 
+If you can think of your data as a mix of signals, then 
+the ICA basis will have a vector for each independent signal
+
+You can try ICA using the
+[fastICA](https://cran.r-project.org/web/packages/fastICA/index.html) 
+R package. 
+
 
 ## Non-linear methods
+
+If there are complex polynomial relationships 
+between your features, you might try non-linear 
+dimensionality reduction methods
 
 1. Isometric feature mapping (ISOMAP)
 
 We use this technique when the data is strongly 
 non-linear.
 
+You can try ISOMAP using the `Isomap()` function in the 
+[RDRToolbox](https://www.rdocumentation.org/packages/RDRToolbox/versions/1.22.0) 
+R package. 
+
+
 2. t-SNE
 
-This technique also works well when the data is 
-strongly non-linear. It works extremely well for 
-visualizations as well, but distances between points 
-are meaningless.
+t-SNE often provides a better data visualization
+than PCA, because a linear method struggles with 
+modeling curved manifolds. It focuses on preserving 
+the distances between widely separated data 
+points rather than on preserving the distances 
+between nearby data points.
+
+You can try t-SNE using the
+[Rtsne](https://cran.r-project.org/package=Rtsne) 
+R package. 
+
 
 3. UMAP
 
 This technique works well for high dimensional data.
 The run-time is shorter as compared to t-SNE.
+
+You can try UMAP using the
+[umap](https://cran.r-project.org/package=umap) 
+R package. 
+
 
 
 # Resources and sources of material 
