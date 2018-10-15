@@ -1,0 +1,202 @@
+---
+title: "Homework 3: University Academic Scorecard"
+output: html_document
+---
+
+#### Preface 
+
+* **This homework is due Friday October 26, 2018 at 11:59 PM**. 
+* When you have completed the assignment, knit the R Markdown, commit your changes and push to GitHub.
+* If you do not include axis labels and plot titles, then points will be deducted.
+* If you do not include prose/text after the sections titled "Add a summary of your findings here", then points will be deducted. 
+* As as reminder, you can use up to two late days (if available) on this assignment without any penalty (see [Syllabus](https://jhu-advdatasci.github.io/2018/syllabus.html) on course website for more details on Late Day Policy).
+* You are welcome and encouraged to discuss homework problems with others in order to better understand it, but the work you turn in must be your own. You must write your own code, data analyses, and communicate and explain the results in your own words and with your own visualizations. **All students turning in plagiarized solutions will be reported to Office of Academic Integrity, and will fail the assignment**.
+
+# Motivation 
+
+You are a high school student applying to colleges
+and you think you are interested in getting a Bachelor's 
+in a health related field. 
+
+Upon some googling, you are quickly overwhelmed 
+at the sheer number of health related programs that exist.
+Also, your parents have graciously offered to pay for
+four years of college, but need you stay within a $50,000
+budget (including everything e.g. tuition, fees, room and 
+board, books, etc). 
+
+Your parents told you that in 2013, President Obama 
+announced that his administration would create a 
+"[college scorecard](https://collegescorecard.ed.gov)
+that parents and students can use to compare schools 
+based on a simple criteria-where you an get the most
+bang for your educational buck." 
+[link to quote](https://www.brookings.edu/opinions/understanding-the-college-scorecard/). 
+
+Your goal in this homework assignment is to explore the 
+landscape of colleges (various criteria and cost) that 
+have health related programs and identify a group of colleges 
+that you would interested in applying to while staying 
+within your budget. 
+
+## Data 
+
+The data that we will use are:
+
+* [College Scorecard Data](https://collegescorecard.ed.gov/data/): The College Scorecard Database records summary information of over 7000 colleges and universities in details, which includes location, size, admission SAT score, degrees, graduation rate and so on. Here, instead of using the full data, we explore the most recent data, which can be [downloaded here](https://ed-public-download.app.cloud.gov/downloads/Most-Recent-Cohorts-All-Data-Elements.csv). (Notice that the data set is 132MB.) 
+* Explanations of the column names can be found [here](https://collegescorecard.ed.gov/assets/CollegeScorecardDataDictionary.xlsx).
+* Your are welcome to incorporate other data into your analysis, if necessary, as long as those other data sources are documented and their origin is clear.
+
+
+## Problem 1: Exploring the Data
+
+Read in the the College Scorecard Data and 
+call it `univ_scorecard`. Filter out 
+universities with a highest degree lower 
+than Bachelor's degree and remove them (because 
+we want to get a Bachelor degree). Then, using 
+the columns containing information about the 
+average cost of attendance (academic year 
+institutions), use exploratoray data analysis 
+(i.e. must include a plot here)
+tools to see if there a difference in 
+distributions of cost among public institutes, 
+private nonprofit institutes and private 
+for-profit institutes? 
+
+Based on your budget (up to $50,000 a year), 
+filter out universities outside of your budget. 
+How many universities remain in your search scope?
+
+**Hint**: 
+
+1. You can refer to the data dictionary 
+([download here](https://collegescorecard.ed.gov/assets/CollegeScorecardDataDictionary.xlsx)) 
+for explanations of column names. 
+2. Missing values can be omitted.
+
+```{r}
+## add your code here
+
+```
+
+
+## Problem 2: Identifying universities with health related degrees
+
+### Problem 2.1 
+
+As you are mostly considering getting a degree in 
+a health related field, you want to identify 
+groups of colleges that have a high percentage of
+degrees awarded for health related fields. Read 
+about the data columns from the data dictionary 
+that are related to percentage of degrees awarded. 
+
+In which field does the Johns Hopkins University have 
+the most degrees awarded? What is the percentage? 
+Is the Johns Hopkins University in your budget?
+
+```{r}
+## add your code here
+
+```
+
+#### Add a summary of your findings here
+
+
+### Problem 2.2
+
+For universities within our search scope (defined 
+in Problem 1) and using the data about the 
+percentage of degrees award in different fields, 
+use dimensionality reduction methods and 
+apply unsupervised methods (e.g. clustering approaches)
+to explore and identify groups of universities 
+that you might be interested in applying to. Are 
+there groups of universties that cluster together? 
+If so, how many groups? What do they cluster by?
+
+For example, you could start about by using PCA 
+and plot the universities along the first two PCs and
+color them by percent of degrees awarded in 
+"Health Professions and Related Programs". Are the
+loadings useful? 
+
+To get full credit, a complete response 
+should include: (1) the application of at least
+one dimensionality reduction method to explore
+the most informative features in this data, (2) the 
+application of at least one unsupervised analysis
+(e.g. k-means) to identify groups of universities, 
+(3) data visualizations or summary statistics, and
+(4) a summary of your findings. 
+
+```{r}
+## add your code here
+
+```
+
+#### Add a summary of your findings here
+
+
+## Problem 3: What other features are most important to you? 
+
+In the data set, there are many other features that 
+may help you pick a university, for example,
+
+* admission rate and average SAT scores
+* completion rate
+* earnings after graduation
+* geography
+* size of university
+* type: e.g. public or private, single sex or coed, research vs teaching focused, religious affiliation
+* ....
+
+Explore other features that are most important to you
+in making a decision for colleges. 
+
+```{r}
+## add your code here
+
+```
+
+**Note**: There is no wrong answer. To get full credit, a 
+complete response should include: (1) the features you 
+are most interested in when considering universities,
+(2) the approach you took to identify 
+your topic choices, (3) data visualizations 
+or summary statistics, and (4) a summary of your 
+findings for this problem. 
+
+**Note**: You may also use data outside of the scorecard,
+as long as those other data sources are documented and 
+their origin is clear.
+
+
+## Problem 4: Narrative
+
+Given the results you produced in Problems 1-3,
+it's time to summarize your results and make a set of 
+recommendations for which colleges you want to apply 
+to with a health related program keeping in mind your 
+budget. 
+
+To get full credit for the problem, you will need the following: 
+
+* Write a one paragraph abstract summarizing your findings 
+from Problems 1-3 above. The paragraph should include 
+a set of recommendations for your top three choices of 
+colleges to apply to. 
+
+* Produce one summary figure/table/graphic/etc.
+that provides evidence supporting the recommendations made 
+in the abstract above.
+
+* Produce a figure/table/graphic/etc. that describes 
+other possible features that would be interesting to explore
+that would be useful in deciding which colleges to apply to
+given the criteria described in this assignment. 
+
+* Write one paragraph outlining the limitations of your 
+analysis and what could be done in the future to address
+those limitations.
