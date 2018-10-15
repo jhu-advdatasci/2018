@@ -58,7 +58,8 @@ and give an example.
 # Spurious correlation
 
 The following comical example underscores that correlation 
-is not causation. It shows a very strong correlation between divorce rates and margarine consumption. 
+is not causation. It shows a very strong correlation between 
+divorce rates and margarine consumption. 
 
 ```{r}
 the_title <- paste("Correlation =", 
@@ -147,9 +148,9 @@ res %>%
 ```
 
 It is just a mathematical fact that if we observe 
-`r cat(prettyNum(G,big.mark=",",scientific=FALSE))` random 
-correlations that are expected to be 0 but have a standard
-error of `r signif(sd(res$r),3)`, the largest one will be
+`r G` random correlations that are expected to
+be 0 but have a standard error of 
+`r signif(sd(res$r),3)`, the largest one will be
 close 1. 
 
 **Note**: If we performed regression on this group and 
@@ -312,14 +313,6 @@ leads to associations being misinterpreted.
 If $X$ and $Y$ are correlated, we call $Z$ a _confounder_
 if changes in $Z$ cause changes in both $X$ and $Y$. 
 
-
-Earlier, when studying baseball data, we saw how Home 
-Runs was a confounder that resulted in a higher 
-correlation than expected when studying the relationship 
-between Bases on Balls and Runs. In some cases, we can
-use linear models to account for confounders. However,
-this is not always the case.
-
 Incorrect interpretation due to confounders is 
 ubiquitous in the lay press. It is sometimes hard
 to detect. Here we present two examples, both 
@@ -437,7 +430,9 @@ of the colored bars represents the percent of each major
 students were admitted to. This breakdown allows us to 
 see that the majority of accepted men come from two majors:
 A and B. It also lets us see that few women were accepted 
-to these majors. What the plot does **not** show us is 
+to these majors. 
+
+What the plot does **not** show us is 
 the number of applicants for each major. 
 
 ### Average after stratifying
