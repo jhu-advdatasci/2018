@@ -1568,7 +1568,7 @@ div.tocify {
 <li>An annotation table (called <code>sampleinfo_GSE5859.csv</code>) that contains the information about each of the samples (columns in the gene expression data set) such as the sex, the age, the treatment status, the date the samples were processed. Each row represents one sample.</li>
 </ol>
 <p>The data are available on the GitHub course repo <code>/data</code>, so once we pull the changes locally, we can read in the data into R.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" data-line-number="1">exprs &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;../../2018-working/data/GSE5859_exprs.csv&quot;</span>)</a>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" data-line-number="1">exprs &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;../data/GSE5859_exprs.csv&quot;</span>)</a>
 <a class="sourceLine" id="cb3-2" data-line-number="2">sampleinfo &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;../data/GSE5859_sampleinfo.csv&quot;</span>)</a></code></pre></div>
 <p>We see there is a lot of great information in this table.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="kw">head</span>(sampleinfo)</a></code></pre></div>

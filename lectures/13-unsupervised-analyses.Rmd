@@ -118,7 +118,7 @@ so once we pull the changes locally, we can read in the
 data into R. 
 
 ```{r, warning=FALSE, message=FALSE}
-exprs <- read_csv("../../2018-working/data/GSE5859_exprs.csv")
+exprs <- read_csv("../data/GSE5859_exprs.csv")
 sampleinfo <- read_csv("../data/GSE5859_sampleinfo.csv")
 ```
 
