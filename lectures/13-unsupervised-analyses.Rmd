@@ -1,0 +1,548 @@
+---
+title: Unsupervised Analyses
+date: Oct 17, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", 
+                      out.width = '70%')
+```
+
+First, we will install a few R package 
+```{r}
+library(rafalib)
+```
+
+Then, we load a few R packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+# Motivation
+
+In this lecture, we will be analyzing some
+genomics data measured through high-throughput 
+technologies, which measure thousands of features
+at a time. Examples of feature are genes, single
+base locations of the genome, genomic 
+regions, or image pixel intensities. Each specific 
+measurement product is defined by a specific 
+set of features. For example, a specific gene 
+expression microarray product is defined by the 
+set of genes that it measures.
+
+The lecture material came from these resources: 
+
+* [http://genomicsclass.github.io/book/pages/clustering_and_heatmaps.html](http://genomicsclass.github.io/book/pages/clustering_and_heatmaps.html)
+* [http://genomicsclass.github.io/book/pages/eda_with_pca.html](http://genomicsclass.github.io/book/pages/eda_with_pca.html)
+
+A specific study will typically use one product to 
+make measurements on several experimental units, 
+such as individuals. The most common experimental 
+unit will be the individual, but they can also be 
+defined by other entities, for example different 
+parts of a tumor. 
+
+Here we show an example for which we measure RNA 
+expression for 8,793 genes from blood taken from 
+208 individuals. In this case the data was originally 
+collected to compare gene expression across ethnic
+groups. The study is described in [this paper](http://www.ncbi.nlm.nih.gov/pubmed/17206142),
+which claimed that roughly 50% of genes where 
+differentially expressed when comparing blood from 
+two ethnic groups. 
+
+In the lecture about dimensionality reduction, we 
+talked about having a set of $n$ observations
+$X_{1},...,X_{n}$ each with $p$ features. The goal 
+there was to understand the relationships between 
+them or patterns in them. After identifying the most 
+informative features, we might be interested in 
+grouping the observations or samples in some way 
+(e.g. clustering approaches). Both of these are
+a form of _unsupervised_ analyses. 
+
+Some types of techniques for unsupervised analyses 
+include: 
+
+* Clustering
+* Principal components analysis/SVD
+* Factor analysis
+* Kernel density estimation
+* Multidimensional scaling (MDS) 
+* ICA 
+* ... and many more!
+
+In contrast, in future lecture, we will also discuss 
+the _Supervised_ setting where we have some covariates 
+$X$ and some outcome $Y$ and we are interested in 
+solving something like $\arg\min_{f} E[(Y−f(X))^2]$. 
+More on that later. 
+
+In this lecture, we will use EDA and apply 
+unsupervised methods to ask the questions:
+
+**How big is the variation between different ethnic groups? Do samples from the different ethnic groups cluster by ethnicity or by something else?**
+
+## Data 
+
+The data we will use comes from 
+[this paper](https://www.ncbi.nlm.nih.gov/pubmed/17206142) 
+which looked at differences in gene expression data 
+across three ethnic populations. 
+
+A [gene expression](https://en.wikipedia.org/wiki/Gene_expression)
+data set obtained from a 
+[microarray](https://en.wikipedia.org/wiki/DNA_microarray) 
+experiment. [Read more about the specific experiment here](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE5859). 
+There are two data sets we will use (both are available on GitHub
+in the course repo [`/data`](https://github.com/jhu-advdatasci/2018/tree/master/data)): 
+
+1. The gene expression intensities (called `exprs_GSE5859.csv`) where the rows represent the features on the microarray (e.g. genes) and the columns represent the different microarray samples.
+2. An annotation table (called `sampleinfo_GSE5859.csv`) that contains the information about each of the samples (columns in the gene expression data set) such as the sex, the age, the treatment status, the date the samples were processed. Each row represents one sample.
+ 
+
+The data are available on the GitHub course repo `/data`, 
+so once we pull the changes locally, we can read in the 
+data into R. 
+
+```{r, warning=FALSE, message=FALSE}
+exprs <- read_csv("../../2018-working/data/GSE5859_exprs.csv")
+sampleinfo <- read_csv("../data/GSE5859_sampleinfo.csv")
+```
+
+We see there is a lot of great information in this
+table. 
+```{r}
+head(sampleinfo)
+```
+
+Next, we check to see if the columns in 
+the `exprs` matrix match the order of 
+the rows of the `sampleinfo` table. 
+
+For example, we can look at `exprs`
+
+```{r}
+exprs[1:5,1:5]
+```
+
+
+```{r}
+all(sampleinfo$filename == colnames(exprs)[-1])
+```
+
+Nope! Let's fix that. 
+
+Here we re-order the columns of the `exprs` dataset 
+using the `match()` function to make sure the order
+of the columns in the `exprs` matrix match the 
+order of the rows of the `sampleinfo` table. 
+
+```{r}
+exprs <- exprs[,match(sampleinfo$filename,colnames(exprs))]
+
+# sanity check
+all(sampleinfo$filename == colnames(exprs))
+```
+
+# Clustering
+
+If we want to cluster samples into groups, 
+some questions you might immediately ask are: 
+
+* How do we define close?
+* How do we group things?
+* How do we visualize the grouping?
+* How do we interpret the grouping?
+
+## Distance
+
+First, let's talk about how we can define "distance". 
+Consider the location of Baltimore and Washington DC 
+defined with (X,Y) coordiante points on a Cartesian 
+plane. 
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/unsupervised/distance.png")
+```
+
+[image source](http://rafalab.jhsph.edu/688/lec/lecture5-clustering.pdf)
+
+### Euclidean distance
+
+The euclidean distance between 
+Baltimore and DC is:
+
+$$\sqrt{ (X_1-X_2)^2 + (Y_1-Y_2)^2} = (|X_1-X_2|^{2} + |Y_1-Y_2|^{2})^{1/2}$$
+or 
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/unsupervised/euclid.png")
+```
+
+We have previously learned how to use the 
+`dist()` function to calculate the Euclidean distance. 
+
+Let's pretend that we don’t know these are different 
+ethnicities and are interested in clustering. The 
+first step is to compute the distance between each sample:
+
+```{r}
+d = dist(t(exprs),method="euclidean")
+str(as.matrix(d)) # should be 208 x 208
+```
+
+### Manhattan distance
+
+In constrast to a Euclidean distance, a 
+Manhattan (or taxicab) distance is the 
+sum of the absolute differences of the 
+Cartesian coordiantes. 
+
+$$|X_1-X_2| + |Y_1-Y_2|$$
+The term "taxicab" comes from the distance a car would
+drive in a city laid out in square blocks 
+(if there are no one-way streets). The taxicab metric 
+is also known as rectilinear distance or $L_1$ distance. 
+
+In the picture below, the the red, yellow, and blue paths
+(taxicab geometry) all have the same shortest path length
+of 12. In Euclidean geometry, the green line has length 
+$6\sqrt{2} \approx 8.49$, and is the unique shortest path.
+
+```{r}
+knitr::include_graphics("https://github.com/jtleek/advdatasci/raw/master/imgs/unsupervised/manhattan.png")
+```
+
+[image source](http://en.wikipedia.org/wiki/Taxicab_geometry)
+
+There are lots of other distance metrics too! 
+
+## Hierarchical clustering 
+
+Now that we have computed the distance between each 
+of the samples, how can we cluster them into groups? 
+
+Once approach is called _Hierarchical clustering_. 
+This is an agglomerative approach: 
+
+* Initially: every sample is its own group
+* Then, find closest two things
+* Put them together
+* Find next closest, until there is only one group
+
+It requires
+* A defined distance
+* A merging approach
+
+It produces: 
+* A tree showing how close things are to each other
+
+For this, we will use the `hclust()` function.
+
+```{r}
+hc <- hclust(d)
+```
+
+This function returns an `hclust` object that 
+describes the groupings that were created using 
+the algorithm described above. 
+
+```{r}
+hc
+```
+
+The `plot()` method represents these
+relationships with a tree or dendrogram:
+
+```{r}
+plot(hc,labels=sampleinfo$ethnicity,cex=0.5)
+```
+
+It's hard to see the "clusters". One idea would be to 
+color each sample by the ethnic group. For this, we will 
+use the `mypclust()` function in the 
+[`rafalib`](https://cran.r-project.org/package=rafalib)
+R package. 
+
+```{r}
+library(rafalib)
+myplclust(hc, labels=sampleinfo$ethnicity, 
+          lab.col=as.numeric(as.factor(sampleinfo$ethnicity)), cex=0.5)
+```
+
+We see that there seem to be some clusters, but 
+it's not very clear. There are CEU samples clustering 
+together with the ASN samples, etc. 
+
+Also, note that hierarchical clustering does not 
+define specific clusters, but rather defines the 
+dendrogram above. From the dendrogram we can decipher 
+the distance between any two groups by looking at 
+the height at which the two groups split into two. 
+To define clusters, we need to "cut the tree"" at 
+some distance and group all samples that are within 
+that distance into groups below. To visualize this, 
+we draw a horizontal line at the height we wish
+to cut and this defines that line. 
+
+We use 73 as an example:
+
+```{r}
+myplclust(hc, labels=sampleinfo$ethnicity, 
+          lab.col=as.fumeric(sampleinfo$ethnicity), cex=0.5)
+abline(h=73)
+```
+
+If we use the line above to cut the tree into 
+clusters, we can examine how the clusters overlap 
+with the actual ethnic groups:
+
+```{r}
+hclusters <- cutree(hc, h=73)
+table(true=sampleinfo$ethnicity, 
+      cluster=hclusters)
+```
+
+We can also ask cutree to give us back a given 
+number of clusters. The function then automatically 
+finds the height that results in the requested
+number of clusters:
+
+```{r}
+hclusters <- cutree(hc, k=3)
+table(true=sampleinfo$ethnicity, 
+      cluster=hclusters)
+```
+
+In both cases, we do not really see the samples
+clustering by ethnicity. For example, the CEU samples 
+are spread across all three clusters. This is a 
+surprising result and we will continue to explore 
+this to see what's going on. 
+
+Before we leave this section, it's important to
+note that selecting the number of clusters 
+is generally a challenging step in practice 
+and an active area of research.
+
+## $K$-Means clustering
+
+Another approach to cluster is with the `kmeans()` 
+function to perform $k$-means clustering. 
+
+This is a partioning approach:
+* Fix a number of clusters
+* Get "centroids" of each cluster
+* Assign things to closest centroid
+* Re-calculate centroids
+
+Requires
+* A defined distance metric
+* A number of clusters
+* An initial guess as to cluster centroids
+
+Produces
+* Final estimate of cluster centroids
+* An assignment of each point to clusters
+
+Let's run k-means on the samples in the 
+space of the first two genes:
+
+```{r}
+set.seed(1000)
+km <- kmeans(t(exprs[1:2,]), centers=3)
+names(km)
+```
+
+If we plot the observations by ethnicity:
+
+```{r}
+new.dat <- data.frame(t(exprs[1:2,]), 
+                      sampleinfo, 
+                      "cluster"=factor(km$cluster)) 
+new.dat %>% 
+  ggplot(aes(x=X1, y=X2, color = ethnicity )) + geom_point()
+```
+
+Since we don't really see a great clusters, we might 
+suspect k-means will have a hard time identifying 
+the correct clusters. 
+
+However, it's important to note that k-means will always
+find clusters
+
+```{r}
+new.dat %>%
+  ggplot(aes(x=X1, y=X2, color = cluster )) + geom_point()
+```
+
+As suspected, we see k-means did not perform well: 
+
+```{r}
+table(true=sampleinfo$ethnicity,
+      cluster=km$cluster)
+```
+
+This is very likely due to the fact the the 
+first two genes are not informative regarding 
+ethnicity. We can see this in the first plot 
+above. If we instead perform k-means clustering 
+using all of the genes:
+
+```{r}
+km <- kmeans(t(exprs), centers=3)
+```
+
+And then plot the samples along the first PCs
+(bote that the columns are are centered by default)
+
+```{r}
+pc <- prcomp(t(exprs))
+str(pc)
+```
+
+Here is a plot of the first two PCs. 
+We can see that the first two PCs will in fact
+be quite informative.
+
+```{r}
+new.dat <- data.frame(pc$x[,1:2], sampleinfo, 
+                      "cluster"=factor(km$cluster)) 
+new.dat %>% 
+  ggplot(aes(x=PC1, y=PC2, color = cluster, 
+             shape = ethnicity)) + geom_point()
+```
+
+Note that it does in fact separate individuals by ethnicity. 
+However, this visualization does illustrate a concerning 
+characteristic: the CEU points seem to have sub-clusters. 
+
+What are these?
+
+It turns out the date in which the samples were processed 
+also explain the clusters:
+
+```{r}
+library(lubridate)
+sampleinfo$exprs_date <- ymd(sampleinfo$date)
+sampleinfo$month <- month(sampleinfo$exprs_date )
+sampleinfo$year <- year(sampleinfo$exprs_date )
+
+new.dat <- data.frame(pc$x[,1:2], sampleinfo, 
+                      "cluster"=factor(km$cluster)) 
+new.dat %>% 
+  ggplot(aes(x=PC1, y=PC2, color = factor(year), 
+             shape = ethnicity)) + geom_point()
+```
+
+Let's explore this a bit more. 
+
+What's the earliest date in our dataset? 
+```{r}
+min(sampleinfo$exprs_date)
+```
+
+OK, let's convert the dates into days since Oct 31, 2002
+```{r}
+sampleinfo$days <- as.numeric(sampleinfo$exprs_date - min(sampleinfo$exprs_date) )
+new.dat <- data.frame(pc$x[,1:2], sampleinfo, "cluster"=factor(km$cluster)) 
+head(new.dat)
+```
+
+Now we will use EDA to explore how date has a large effect 
+on the data. 
+
+Consider only the CEU ethnicity and compute the projection
+to the first principal component like this
+
+```{r}
+ind <- which(sampleinfo$ethnicity=="CEU")
+pc <- prcomp(t(exprs[,ind]))
+str(pc)
+
+new.dat <- data.frame(pc$x[,1:2], sampleinfo[ind,], 
+                      "cluster"=factor(km$cluster[ind])) 
+```
+
+If we create a histogram of the first PC
+```{r}
+hist(pc$x[,1], nc=25)
+```
+
+We see two modes. Now let's plot the 
+first PC against the date the samples 
+were processed: 
+
+```{r}
+new.dat %>% 
+  ggplot(aes(x=exprs_date, y=PC1)) + geom_point() + 
+  ggtitle("Relationship between the PC1 and the date the samples were processed") + 
+  xlab("Date sample was processed") + 
+  ylab("Principal Component 1") 
+```
+
+Around what day do you notice a difference in
+the way the samples were processed?
+
+```{r}
+new.dat %>% 
+  ggplot(aes(x=days, y=PC1, color=factor(cluster))) + geom_point() + 
+  ggtitle("Relationship between the PC1 and the date the samples were processed") + 
+  xlab("Date sample was processed") + 
+  ylab("Principal Component 1") + 
+  geom_vline(aes(xintercept=100))
+```
+
+We see a change around day 100, which also 
+corresponds to the $k$-means cluster predictions. 
+
+
+## Model based clustering
+
+
+### Example: A pathological case
+```{r}
+clust1 = data.frame(x=rnorm(100),y=rnorm(100)); a = runif(100,0,2*pi)
+clust2 = data.frame(x=8*cos(a) + rnorm(100),y=8*sin(a) + rnorm(100))
+plot(clust2,col='blue',pch=19); points(clust1,col='green',pch=19)
+```
+
+If we apply `kmeans()`, we see
+
+```{r}
+dat = rbind(clust1,clust2)
+kk = kmeans(dat,centers=2)
+plot(dat,col=(kk$clust+2),pch=19)
+```
+
+## Summary of clustering approaches
+
+* Algomerative (h-clustering) versus divisive (k-means)
+* Distance matters!
+* Merging matters!
+* Number of clusters is rarely estimated in advance
+* H-clustering: Deterministic - but you don’t get a fixed number of clusters
+* K-means: Stochastic - fix the number of clusters in advance
+* Model based: Can select the number of clusters, may be stochastic, careful about assumptions!
+
+### What are some common evaluation methods used in cluster?
+
+1. Sum of Squared Errors (SSE). If a cluster is very "compact" and well separated from others, it will have a small SSE.
+2. If you have an external measure (i.e. gold standard), you can also try these: 
+  * Rand Index. Compares the two clusters and tries to find the ratio of matching and unmatched observations among two clustering structures. Its value lies between 0 and 1. 
+  * Precision Recall Measure. Derived from the confusion matrix. Recall is also known as "Sensitivity" [True Positive/ (True Positive + False Negative)]. For clustering, we use this measure from an information retrieval point of view. Here, precision is a measure of correctly retrieved items. Recall is measure of matching items from all the correctly retrieved items.
+
+
