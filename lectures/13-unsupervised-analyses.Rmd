@@ -20,8 +20,8 @@ knitr::opts_chunk$set(echo = TRUE,
 ```
 
 First, we will install a few R package 
-```{r}
-library(rafalib)
+```{r,eval=FALSE}
+install.packages(rafalib)
 ```
 
 Then, we load a few R packages
@@ -84,7 +84,7 @@ include:
 * ICA 
 * ... and many more!
 
-In contrast, in future lecture, we will also discuss 
+In contrast, in future lectures, we will also discuss 
 the _Supervised_ setting where we have some covariates 
 $X$ and some outcome $Y$ and we are interested in 
 solving something like $\arg\min_{f} E[(Y−f(X))^2]$. 
@@ -236,7 +236,10 @@ Now that we have computed the distance between each
 of the samples, how can we cluster them into groups? 
 
 Once approach is called _Hierarchical clustering_. 
-This is an agglomerative approach: 
+This is an agglomerative ("bottom up" aka each 
+observation starts in its own cluster, and pairs 
+of clusters are merged as one moves up the hierarchy) 
+approach: 
 
 * Initially: every sample is its own group
 * Then, find closest two things
@@ -289,9 +292,12 @@ together with the ASN samples, etc.
 
 Also, note that hierarchical clustering does not 
 define specific clusters, but rather defines the 
-dendrogram above. From the dendrogram we can decipher 
+dendrogram above. 
+
+From the dendrogram we can decipher 
 the distance between any two groups by looking at 
 the height at which the two groups split into two. 
+
 To define clusters, we need to "cut the tree"" at 
 some distance and group all samples that are within 
 that distance into groups below. To visualize this, 
@@ -329,9 +335,8 @@ table(true=sampleinfo$ethnicity,
 
 In both cases, we do not really see the samples
 clustering by ethnicity. For example, the CEU samples 
-are spread across all three clusters. This is a 
-surprising result and we will continue to explore 
-this to see what's going on. 
+are spread across all three clusters. We will continue 
+to explore this result to see what's going on. 
 
 Before we leave this section, it's important to
 note that selecting the number of clusters 
@@ -374,7 +379,9 @@ new.dat <- data.frame(t(exprs[1:2,]),
                       sampleinfo, 
                       "cluster"=factor(km$cluster)) 
 new.dat %>% 
-  ggplot(aes(x=X1, y=X2, color = ethnicity )) + geom_point()
+  ggplot(aes(x=X1, y=X2, color=ethnicity)) + 
+  geom_point() + xlab("Gene 1 expression") + 
+  ylab("Gene 2 expression")
 ```
 
 Since we don't really see a great clusters, we might 
@@ -407,7 +414,7 @@ km <- kmeans(t(exprs), centers=3)
 ```
 
 And then plot the samples along the first PCs
-(bote that the columns are are centered by default)
+(note that the columns are are centered by default)
 
 ```{r}
 pc <- prcomp(t(exprs))
@@ -488,20 +495,20 @@ were processed:
 
 ```{r}
 new.dat %>% 
-  ggplot(aes(x=exprs_date, y=PC1)) + geom_point() + 
+  ggplot(aes(x=days, y=PC1)) + geom_point() + 
   ggtitle("Relationship between the PC1 and the date the samples were processed") + 
-  xlab("Date sample was processed") + 
+  xlab("Days since first sample was processed") + 
   ylab("Principal Component 1") 
 ```
 
-Around what day do you notice a difference in
+Around what time do you notice a difference in
 the way the samples were processed?
 
 ```{r}
 new.dat %>% 
   ggplot(aes(x=days, y=PC1, color=factor(cluster))) + geom_point() + 
   ggtitle("Relationship between the PC1 and the date the samples were processed") + 
-  xlab("Date sample was processed") + 
+  xlab("Days since first sample was processed") + 
   ylab("Principal Component 1") + 
   geom_vline(aes(xintercept=100))
 ```
@@ -509,14 +516,22 @@ new.dat %>%
 We see a change around day 100, which also 
 corresponds to the $k$-means cluster predictions. 
 
-
 ## Model based clustering
 
+One disadvantage of hierarchical clustering algorithms,
+and k-means algorithms is that they are largely heuristic
+and not based on formal models (meaning sample observations 
+arise from a distribution that is a mixture of two or more
+components).
 
 ### Example: A pathological case
+
 ```{r}
-clust1 = data.frame(x=rnorm(100),y=rnorm(100)); a = runif(100,0,2*pi)
+clust1 = data.frame(x=rnorm(100),y=rnorm(100))
+
+a = runif(100,0,2*pi)
 clust2 = data.frame(x=8*cos(a) + rnorm(100),y=8*sin(a) + rnorm(100))
+
 plot(clust2,col='blue',pch=19); points(clust1,col='green',pch=19)
 ```
 
