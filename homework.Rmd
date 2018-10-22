@@ -4,6 +4,8 @@ title: Homework
 
 Homework assignments and solutions will be add here throughout the courses. 
 
+## 711 
+
 ### Homework 0
 
   * Due Friday, September 14, 2018 by 11:59pm
@@ -30,6 +32,13 @@ Homework assignments and solutions will be add here throughout the courses.
   * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/hw3-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/hw3-assignment.Rmd))
     * To access and submit assignment: [https://classroom.github.com/a/g21rZQaN](https://classroom.github.com/a/g21rZQaN)
 
+## 712
+
+### Homework 1
+
+  * Due Monday, November 5, 2018 by 11:59pm
+  * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/712-hw1-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/712-hw1-assignment.Rmd))
+    * To access and submit assignment: 
 
 
 

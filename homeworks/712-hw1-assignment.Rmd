@@ -1,0 +1,268 @@
+---
+title: "Homework 1 (712): Predict the 2018 US Senate Midterm Elections"
+output: html_document
+---
+
+#### Preface 
+
+* **This homework is due Monday November 5, 2018 at 11:59 PM**. 
+* When you have completed the assignment, knit the R Markdown, commit your changes and push to GitHub.
+* If you do not include axis labels and plot titles, then points will be deducted.
+* If you do not include prose/text after the sections titled "Add a summary of your findings here", then points will be deducted. 
+* As as reminder, you can use up to two late days (if available) on this assignment without any penalty (see [Syllabus](https://jhu-advdatasci.github.io/2018/syllabus.html) on course website for more details on Late Day Policy).
+* You are welcome and encouraged to discuss homework problems with others in order to better understand it, but the work you turn in must be your own. You must write your own code, data analyses, and communicate and explain the results in your own words and with your own visualizations. **All students turning in plagiarized solutions will be reported to Office of Academic Integrity, and will fail the assignment**.
+
+
+## Motivation 
+
+The goal of this homework assignment is to use US opinion 
+polling data (any any other sources of data) for the 
+current 2018 Senate Midterm Elections and predict the 
+results in each state. 
+
+![](https://www.latimes.com/resizer/tK0iPJn28pnUWfqL-9F18D21SIU=/1400x0/arc-anglerfish-arc2-prod-tronc.s3.amazonaws.com/public/QEHELN7VJBCMZKPMEP63T5XODU.png)
+[image source](http://www.latimes.com/politics/la-na-pol-trump-2018-senate-20170217-story.html)
+
+We will have three competitions with the terms for scoring entries
+described below (see Problem 3). The winner of each competition 
+will win an Amazon gift card! 
+
+The three competitions are the following: 
+
+1. Predict the number of Republican senators. You may provide an interval. Smallest interval that includes the election day result wins. (Problem 3.1)
+2. Predict the republican-democrat (R-D) difference in each state. The predictions that minimize the residual sum of squares between predicted and observed differences wins. (Problem 3.2)
+3. Report a confidence interval for the R-D difference in each state. If the election day result falls outside your confidence interval in more than two states you are eliminated. For those surviving this cutoff, we will add up the size of all confidence intervals and sum. The smallest total length of confidence interval wins. (Problem 3.3)
+
+To submit your predictions, we will post a link on Slack to a Google Form. 
+
+### Data
+
+Some data you will find useful are: 
+
+1. US Opinion poll data from: 
+    * [RealClear Politics](https://www.realclearpolitics.com/epolls/2018/senate/2018_elections_senate_map.html) -- contains current senate polling data
+    * [Huffington Post Pollster API](https://elections.huffingtonpost.com/pollster/api/v2) -- contains historical polling data  
+2. Summary table from FiveThirtyEight used in their Senate Model (data available in a [CSV](https://projects.fivethirtyeight.com/congress-model-2018/senate_seat_forecast.csv) format). 
+
+
+
+# Problem 1: Data Wrangling 
+
+## Problem 1.1 
+
+Create a master data frame called `candidates` containing
+information about each race and show the head of the data 
+frame. Specifically, each 
+row should represent one race and the data frame 
+should have the following columns: 
+
+1. `state` = the state abbreviation where the race is being held 
+2. `class` = the [class](https://en.wikipedia.org/wiki/Classes_of_United_States_Senators) of the Senate race (1, 2, 3)
+3. `special` = TRUE/FALSE status representing whether this is a special election or not
+4. `R` = name of republican candidate
+5. `D` = name of non-republican candidate (democrat or independent)
+6. `race_id` = in lowercase letters the abbreviation of the state underscore the senate class number (e.g. `az_1`)
+7. `safe` = a TRUE/FALSE logical vector indicating whether [RealClear Politics](https://www.realclearpolitics.com/epolls/2018/senate/2018_elections_senate_map.html) has indicated if the incumbent in this race is safe or not. 
+8. `race_url` = a URL to where you got your poll data from e.g. [Texas](https://www.realclearpolitics.com/epolls/2018/senate/tx/texas_senate_cruz_vs_orourke-6310.html) or `NA` if no poll data exists. 
+
+**Hints**: 
+
+* There are 33 regular elections and 2 special elections, so you should have 35 rows. 
+* If there are more than two candidates running in a race, pick the top two candidates with the largest voteshare. 
+* The Senate race in MS, class 2 ([MS2](https://www.realclearpolitics.com/epolls/2018/senate/ms/mississippi_senate_special_election_open_primary-6493.html)) is not listed as `safe`, but it also does not have any poll data (as of 2018-10-17). So you can consider this race a `safe` race for purposes of this homework. 
+* The Senate race in CA, class 1 ([CA1](https://www.realclearpolitics.com/epolls/2018/senate/ca/california_senate_feinstein_vs_de_leon-6592.html)), there are two democrats running. For purposes of this homework, label Kevin de Leon as `R` and Dianne Feinstein as `D` to calculate the difference between `R`-`D`. 
+* There are two Senate races with Independents competing against Republicans. Change the labels from `I` to `D` for purposes of this homework assignment. 
+* This [data set](https://projects.fivethirtyeight.com/congress-model-2018/senate_seat_forecast.csv) 
+from Fivethirtyeight is a great place to start to create this data frame. 
+
+```{r}
+## add your code here 
+
+```
+
+
+## Problem 1.2 
+
+Create a `list` object of length 35 and name the object 
+`polls`. Within the `polls` object, name each item in your list 
+the same as your `race_id` in the `candidates` data frame. 
+
+```{r, eval=FALSE}
+polls <- vector(mode="list", length=35)
+names(polls) <- candidates$race_id
+```
+
+Then, scrape in opinion poll data (if available) from the RealClear 
+Politics website for each of the senate midterm races and store
+the poll data for that race in the corresponding slot in the list. 
+
+Show the head of the data frame containing poll data from Arizona class 1 race. 
+
+**Hint**: 
+
+```{r}
+## add your code here 
+
+```
+
+
+# Problem 2 
+
+Compute a 99% confidence interval for each state 
+
+## Problem 2.1 
+
+Assume you have $M$ polls with sample sizes $n_1, \ldots n_M$. 
+If the polls are independent, what is the average of the variances 
+of each poll if the true proportion is $p$?
+
+#### Add your answer here (use latex to write solution)
+
+
+## Problem 2.2 
+
+First, compute the following for the republican 
+candidates in each race: 
+
+1. the square root of the values in Problem 2.1
+2. the standard deviations of the observed poll results in each race. 
+
+Second, create a scatter plot of the observed versus 
+theoretical (average of theoretical standard deviations)
+with the size of the point proportion to the number of polls. 
+How do these compare? 
+
+```{r}
+## add your code here
+
+```
+
+
+#### Add a summary of your findings here
+
+
+## Problem 2.3
+
+Repeat Problem 2.2, but include only the most recent polls
+from since September 1, 2018. Do they match better or worse or 
+the same? Can we trust the theoretical values? Why might they
+be different? 
+
+```{r}
+## add your code here 
+
+```
+
+#### Add a summary of your findings here
+
+
+
+## Problem 2.4 
+
+Create a scatter plot with each point representing one state.
+Is there one or more races that are outliers in that it they 
+have much larger variabilities than expected? Explore the 
+original poll data and explain why the discrepancy?
+
+```{r}
+## add your code here 
+
+```
+
+#### Add a summary of your findings here
+
+
+
+## Problem 2.5 
+
+Construct 99% confidence intervals for the difference in each 
+race. Use either theoretical or data driven estimates of 
+the standard error and use the results in Problem 2.4, to 
+justify your choice.
+
+Plot the differences with 99% confidence intervals along the 
+x-axis (one for each race) and the difference along the y-axis. 
+Order the x-axis from the most negative difference to most 
+positive difference. 
+
+How does your answer here compare to the other poll aggregators?
+
+
+```{r}
+## add your code here 
+
+```
+
+
+#### Add a summary of your findings here
+
+
+
+# Problem 3
+
+Predict the results for the 2018 Senate Midterm Elections. We will
+have three competitions with the terms for scoring entries
+described below. For the questions below, explain or provide
+commentary on how you arrived at your predictions including code.
+
+Some possible suggestions on analyses to explore: 
+
+* Use historical election results from previous years (e.g. 2012, 2014, or 2016) to build and test statistical models.
+    * Consider removing biases such as a time effect, or house (pollster) effect
+* Perform a Bayesian analysis to predict the probability of republicans winning in each state and provide a posterior distribution (and credible interval) of the number of republicans in the senate. 
+
+**Good luck!!**
+
+**To enter the competition, we will post a link on Slack to a Google Form for you to submit your predictions.**
+
+
+## Problem 3.1 
+
+Predict the number of Republican senators. You may provide an interval.
+Smallest interval that includes the election day result wins.
+
+**Note**: We want the total so add the numbers of those that
+are not up for election.
+
+```{r}
+## add your code here 
+
+```
+
+#### Provide an explanation of methodology here
+
+
+## Problem 3.2
+
+Predict the R-D difference in each state. The predictions
+that minimize the residual sum of squares between predicted
+and observed differences wins.
+
+```{r}
+## add your code here 
+
+```
+
+#### Provide an explanation of methodology here
+
+
+## Problem 3.3
+
+Report a confidence interval for the R-D difference 
+in each state. If the election day result falls outside
+your confidence interval in more than two states you are 
+eliminated. For those surviving this cutoff, we will add 
+up the size of all confidence intervals and sum. The 
+smallest total length of confidence interval wins.
+
+**Note**: You can use Bayesian credible intervals or 
+whatever else you want.
+
+```{r}
+## add your code here 
+
+```
+
+#### Provide an explanation of methodology here
+
+
