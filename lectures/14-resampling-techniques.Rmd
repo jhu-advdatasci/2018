@@ -1,0 +1,633 @@
+---
+title: Resampling Techniques for Statistics and Data Science
+date: Oct 22, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", 
+                      out.width = '70%')
+```
+
+First, we install a few packages: 
+```{r, eval=FALSE}
+install.packages("resampledata")
+```
+
+Next, we load a few R packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+# Motivation
+
+You are a data scientist who has been hired by a 
+law firm to assess if there is a statistically 
+significant difference in repair times between 
+two sets of Verizon customers. You immediate think of 
+a standard way to test if there is a difference 
+between the means of the two groups,
+namely the $t$-test. We will explore this approach 
+and then discuss alternative ways of assessing 
+if there is a difference in the repair times between
+two sets of customers. 
+
+In this lecture, some of the alternative approaches 
+that we will learn about are modern 
+resampling techniques, specifically permutation 
+tests and bootstrap methods to understand the 
+meaning of things such as sampling distributions, 
+sampling variability, $p$-values, hypothesis tests
+and confidence intervals. The material from this
+lecture is from the 
+[Mathematical Statistics with Resampling in R](https://sites.google.com/site/chiharahesterberg/) 
+book by Laura Chihara and Tim Hesterberg (First edition, 2011). 
+
+```{r, echo=FALSE, out.width='50%'}
+knitr::include_graphics("https://github.com/rudeboybert/resampledata/raw/master/man/figures/ed1.png")
+```
+
+[image source](https://github.com/rudeboybert/resampledata/)
+
+## Data 
+
+A description of the data is provided on page 3 of the book above: 
+
+> Verizon is the primary local telephone company (incubment 
+local exchange carrier, ILEC) for a large area of the eastern 
+United States. As such it is responsible for providing repair
+service for customers of other telephone companies known as 
+competing local exchange carrier (CLECs) in this region. Verizon
+is subject to fines if the repair time (the time it takes to
+fix a problem) for CLEC customers are substationally worse 
+than those for Verizon customers. 
+
+> The data set `verizon` contains a random sample of repair
+times for 1664 ILEC and 23 CLEC customers. The  mean repair 
+time for ILEC customers is 8.4 hours, while that for CLEC 
+customers is 16.5 hrs. Could a difference this large be
+easily explained by chance? 
+
+
+Let's dig into the data to answer this question. 
+
+# Data import 
+
+```{r}
+verizon <- read_csv("https://sites.google.com/site/chiharahesterberg/data2/Verizon.csv")
+head(verizon) 
+```
+
+```{r}
+verizon <- verizon %>% 
+  rename(time=Time, group=Group)
+```
+
+
+# Exploratory data analysis
+
+First, let's calculate what the difference is
+between the mean repair time of ILEC and CLEC customers. 
+
+```{r}
+mean_repair <- verizon %>% 
+  group_by(group) %>% 
+  summarize(mean_repair_time = mean(time)) 
+mean_repair
+```
+
+```{r}
+observed_repair <- mean_repair %>% 
+  spread(key=group,value=mean_repair_time) %>% 
+  summarize(diff_repair_time = ILEC - CLEC) %>%
+  .$diff_repair_time
+observed_repair 
+```
+
+We see the repair time is longer for the CLEC group, but 
+this could be random variability rather than a real 
+difference in repair times. 
+
+We *cannot* tell for sure whether it's a real 
+effect, but what we *can* do is estimate how easily 
+pure random chance would produce a difference this 
+large. 
+
+* If that probability is small, we can 
+conclude something else besides random variability 
+is at work and the data provide convincing enough 
+evidence of a true difference. 
+* If the probability is not
+small, all we can say is that the data available does
+not provide convincing enough evidence that there 
+is a true difference.
+
+## Hypothesis testing
+
+This is the core idea of _statistical significance_
+or classical _hypothesis testing_ to calculate how often
+pure random chance would give an effect as large as the 
+one observed in the data in the absence of any real 
+effect. 
+
+In our verizon example, let's denote $\mu_1$ as the 
+mean repair time for ILEC customers and $\mu_2$ as 
+the mean repair time for CLEC customers. We can test 
+
+$$ H_0: \mu_1 = \mu_2$$ 
+versus 
+$$ H_1: \mu_1 < \mu_2$$
+
+In hypothesis testing, the idea is that we want 
+to compare the test statistic (observed difference in mean
+repair times, $\mu_1 - \mu_2$, or `observed_repair`) 
+to a reference distribution, or _null distribution_ 
+(distribution of the test statistic if the null 
+hypothesis is true). 
+
+There are different ways to calculate exact or 
+approximate null distributions and $p$-values. 
+
+For example, we could try a $t$-test for comparing
+two means. Using a pooled variance $t$-test, 
+
+```{r}
+t.test(verizon$time[verizon$group == "ILEC"], 
+       verizon$time[verizon$group == "CLEC"], 
+       alternative = "less", 
+       var.equal = TRUE)
+```
+
+We see a $p$-value is about 0.0045, suggesting 
+that there is a difference at the $\alpha$ = 0.01 level. 
+
+However, let's think... Why might the $t$-test not
+be appropriate here? 
+
+I can think of two reasons:
+
+1. The distribution of each of the populations should folow a normal distribution (can assess this using histograms or normal quantile (qq) plots) 
+2. Not accurate for skewed populations and imbalanced sample sizes. 
+
+It seems like we have both skewed populations and 
+imbalanced sample sizes in our case. 
+
+```{r}
+verizon %>% 
+  ggplot(aes(x=time)) + geom_histogram() + 
+  facet_wrap(~group, scales = "free_y")
+```
+```{r}
+par(mfrow=c(1,2))
+qqnorm(verizon[verizon$group=="ILEC",]$time)
+qqline(verizon[verizon$group=="ILEC",]$time)
+
+qqnorm(verizon[verizon$group=="CLEC",]$time)
+qqline(verizon[verizon$group=="CLEC",]$time)
+```
+
+```{r}
+table(verizon$group)
+```
+
+So, let's try to explore a different way to calculate 
+a $p$-value that doesn't depend on a theoretical distribution.
+
+# Permutation testing 
+
+_Permutation testing_ compares the test statistic to a
+reference distribution using permutations of the data. 
+
+**What does that mean?**
+
+If there is no difference between the groups of customers
+(CLEC, ILEC), then we could split the customers into two 
+new groups (or permute the group labels) at random 
+and re-calculate the difference in repair times. We
+can repeat this process many, many times and plot 
+the distribution of difference in repair times. 
+Finally, we calculate a $p$-value as the fraction of
+times the random statistics exceeds the original
+statistic. 
+
+This is called a _permutation test_. 
+
+A few issues to think about when implementing
+a permutation test: 
+
+* When computing the $p$-value, it's useful to 1 to both numerator and denominator. This corresponds to including the original data as an extra resample. This avoids reporting an impossible $p$-value of 0, since there is always at least one resample that is as extreme as the original data, namely, the original data itself. 
+* Sample with replacement from the null distribution. Ideally, we want to draw resamples that are unique, so without replacement is more accurate. However, sometimes it's not feasible, may require too much memory/time to check that a new sample doesn't match any previous sample. In those cases, we draw with replacement.
+* More samples for better accuracy. In general, the more resamples, the better the accuracy. If the true $p$-value is $p$, then the estimated $p$-value has variance approximately equal to $p(1-p)/N$ where $N$ is the number of resamples. 
+
+Let's try implementing a permutation test. 
+
+```{r}
+N <- 10^4 -1 # set number of times to repeat this process
+set.seed(99) # so we all get the same answer
+
+result <- numeric(N) # space to save the random differences
+for(i in 1:N){
+  index <- sample(1687, size = 1664, replace = FALSE) # sample of numbers from 1:1687
+  result[i] <- mean(verizon$time[index]) - mean(verizon$time[-index])
+}
+head(result)
+```
+
+```{r}
+hist(result, xlab = "xbar1 - xbar2",
+      main = "Permutation Distribution for verizon repair times")
+abline(v = observed_repair, col = "blue", lty = 5)
+```
+
+We can calculate the proportion of times that 
+we see simulated differences as extreme or smaller 
+than the observed difference (`observed_repair`). 
+
+```{r}
+(sum(result <= observed_repair) + 1)/(N + 1) 
+```
+
+Interesting. The $p$-value calculated from permutation testing
+`r (sum(result <= observed_repair) + 1)/(N + 1)` 
+indicates that the observed difference in means is not 
+significant at the 1% level (though it is at the 5% level). 
+
+In the above simulation, we used $10^4 -1$ resamples for speed, but 
+for more accuracy, we should use more resamples (e.g. half-million 
+resamples). The goal is to have only a very small chance of a test 
+wrongly being declaired significant or not, due to random sampling. 
+
+A few final thoughts about permutation testing: 
+
+* Permutation testing works with unbalanced sample 
+sizes (e.g. in our case, 1664 and 23) and for very skewed 
+data because the observed test statistic and permutation resamples 
+are affected by the imbalance and skewness in the same way.
+* There are no distributional assumptions (e.g. normality) 
+for the two populations of data. 
+* You should explore the use of different, possibly more
+_robust statistics_ such as the median or trimmed mean, 
+which are not sensitive to outliers (like the mean is)
+* You can also use permutation testing to other 
+questions, such as comparing the difference in variances
+
+
+
+
+# The Bootstrap
+
+The midterms are coming up and pollsters are conducting 
+polls to see how voters feel about particular issues. 
+
+For example, what proportion $p$ of registered voters plan to 
+support the republicans in races for Congress? This is 
+also known as the 2018 Generic Congressional Vote. 
+If we pick a particular pollster, e.g. 
+NPR/PBS NewsHour/Marist, we see 
+[they released the results of a poll](http://maristpoll.marist.edu/wp-content/uploads/2018/10/NPR_PBS-NewsHour_Marist-Poll_USA-NOS-and-Tables_1810021305.pdf#page=3) on Oct 1 for the 2018 Generic Congressional Vote 
+reporting $\hat{p} = 0.42$ and Democrats at 
+$1-\hat{p} = 0.48$. 
+
+This was one random sample of $n=996$ registered voters. 
+However a different random sample might have yielded 
+$\hat{p}=0.47$, or $\hat{p}=0.39$. It would be nice to 
+get a sense of the accuracy of the original estimate. 
+To do that, we need to understand how the proportions $\hat{p}$
+vary sample to sample. 
+
+In the last section, we learned about the idea of comparing
+an observed test statistic to a null distribution. Here 
+we are interested in doing something similar: we want to know
+how a statistic varies due to random sampling. But first, we 
+need to define a _sampling distribution_. 
+
+## Sampling distribution
+
+In the above scenario, we know there are other pollsters
+(e.g. CNN) who are also conducting 
+[other surveys](https://www.cnn.com/2018/10/09/politics/cnn-poll-midterms/index.html)
+in the same time frame. In this poll, $\hat{p}=0.41$
+using a random sample of size $n=739$ from the same population 
+of registered voters. If we asked 85 different pollsters to 
+all conduct surveys asking about the 2018 generic congressional 
+ballot, we could see a distribution of the $\hat{p}$ from the 
+recorded from the various pollsters. 
+
+### Case study 1
+For example, let's assume
+the true proportion ($p$) is $p=0.47$. This is a distribution of $\hat{p}$ 
+after 85 pollsters all conducted surveys of sample sizes $n=1000$. 
+
+```{r}
+B <- 85
+n <- 1000
+p <- 0.47
+phat <- replicate(B, {
+  X <- sample(c(0,1), size=n, replace=TRUE, prob=c(1-p, p))
+  mean(X)
+})
+
+hist(phat, main = "Distribution of p-hat from 85 pollsters\nconducting surveys of size 1000")
+```
+
+
+The distribution above is (an approximation to) the
+_sampling distribution_ of $\hat{p}$. The most likely 
+outcome is `r round(mean(phat),3)` and the standard deviation 
+is `r round(sd(phat),3)`. We call the standard deviation of a
+statistic the _standard error_. 
+
+or more exactly: 
+
+```{r}
+mean(phat)
+sd(phat)
+```
+
+
+The permutation distributions above are sampling 
+distributions, as is the example above. The most 
+important thing to understand about sampling distributions
+is it's the distribution of a test statistic that 
+summarizes a dataset and represents how the statistic 
+varies across many random datasets. 
+
+**A histogram of one set of observations drawn from a population does not represent a sampling distribution**. 
+
+**A histogram of permutation means, each from one sample, does represent a sampling distribution**. 
+
+We also know from the Central Limit Theorem that if 
+$X \sim Binom(n,p)$ and $\hat{p} = X/n$, the proportion
+of successes, then for sufficiently large $n$, the 
+sampling distirbution of $\hat{p}$ is approximately 
+normal with mean $p$ and standard deviation 
+$\sqrt{p(1-p)/n}$. Simiarly the sampling distribution of
+$X$ is approximately normal with mean $np$ and standard
+deviation $\sqrt{np(1-p)}$. 
+
+Therefore in our case study, based on the CLT, the 
+sampling distribution is normal with mean $p=0.47$ 
+and (theoretical) standard error 
+$\sqrt{0.47(1-0.47)/1000}$ = `r sqrt((0.47)*(1-0.47) / 1000)`
+which matches very closely to the observed 
+standard error `r sd(phat)`. 
+
+### Case study 2
+
+Let's look at the sampling distribution for a different 
+statistic for a bit of variety. 
+
+Here we draw random samples of size 12 from 
+the uniform distribution on the interval [0,1] and take 
+the maximum of each sample. We simulate the sampling 
+distribution of the maximum by taking 1000 samples of 
+size 12 from the uniform distribution. 
+
+```{r}
+maxY <- numeric(1000)
+#set.seed(100)
+for (i in 1:1000)
+ {
+   y <- runif(12)        #draw random sample of size 12
+   maxY[i] <- max(y)     #find max, save in position i
+ }
+
+hist(maxY, main = "", xlab = "maximums")
+```
+
+We see that the maximum is usually larger than 0.8 and rarely 
+less than 0.6. If we want to calculate the mean and 
+standard error, we can again use the `mean()` and `sd()` 
+functions. 
+
+```{r}
+mean(maxY)
+sd(maxY)
+```
+
+I leave it up you to to compare this to the theoretical 
+mean and standard error. 
+
+## Back to the bootstrap
+
+In the previous sections, we described what is a 
+sampling distribution and some ways to compute or 
+estimate them when the populations were _known_. 
+
+Now we will move to the setting when the 
+population is _unknown_. In this scenario, all we have 
+are the data and a statistic estimated from the data. 
+We need to estimate the sampling distribution of the 
+statistic to understand how much variability or
+uncertainity there is. 
+
+For the verizon repair example, we know the sample mean 
+for the difference in repair times is `r observed_repair`
+using a sample size of `r nrow(verizon)`. 
+
+If you recall, we are interested in the difference
+in mean repair times ($\mu_1 - \mu_2$) where $\mu_1$ 
+is denoted as the mean repair time for ILEC customers
+and $\mu_2$ is the mean repair time for CLEC customers.
+The difference ($\mu_1 - \mu_2$) is the true difference
+repair time for all Verizon customers. This is probably 
+not the same as the sample mean. 
+
+Our goal is to test: 
+
+$$ H_0: \mu_1 = \mu_2$$ 
+versus 
+$$ H_1: \mu_1 < \mu_2$$
+
+
+We already mentioned that different numbers of samples of 
+the same size will lead to different sample means. The 
+question is how can we gauge the accuracy of 
+`r observed_repair` as an estimate to $\mu_1 - \mu_2$. 
+
+If we knew the sampling distribution of the difference in 
+means for samples of size 1000 from the population of all 
+Verizon customers, we would be able to assess how the estimate
+in difference in means varies sample to sample. 
+
+Of course we do not have all the repair times, so we cannot 
+generate the sampling distribution directly. 
+
+Instead, we will use what's called the _bootstrap_ to create 
+a new distribution called the _bootstrap distribution_, 
+which approximates the sampling distribution for test 
+statistics. 
+
+
+### How does the bootstrap work? 
+
+To find the boostrap distribution of the difference 
+in repair times, we draw samples (called _resamples_ or 
+_boostrap samples_) of size $n$, with replacement, from the 
+original sample and then comput the mean of each resample. 
+
+A few things to note about boostrap distributions: 
+
+1. We treat the original sample as the population. 
+If the original sample is representative of the population, 
+then the boostrap distribution of the test statistics will 
+look approximately like the sampling distribution of the 
+test statistic (same spread and shape). 
+
+2. The bootstrap standard error is the standard 
+deviation of the boostrap distribution of that statistic. 
+
+3. However, the mean of the boostrap distribution 
+will be the same as the mean of the original sample 
+(not necessarily that of the original population). 
+
+
+### Steps to construct the bootstrap distribution 
+
+1. Start with a sample size $n$ from a population
+2. Draw a resample of size $n$ with replacement from the sample
+3. Compute a statistics that describes the sample, such as the sample mean
+4. Repeat the resampling process many times
+5. Construct the boostrap distribution of the statistic. Inspect the spread, bias and shape. 
+
+Let's try to construct a bootstrap distribution for 
+our case study of Verizon repair times. Here, we 
+simulate $B=10,000$ bootstrap samples, calculate
+the mean for each `ilec` and `clec` sample, then 
+calculate the difference in the means and record it
+in `time_diff_boot`. 
+
+**Note**: We actually have two populations (`ilec` and
+`clec`), so we will need to resample from the two populations
+and compute the mean of the repair times separately. 
+
+```{r}
+time_ilec <- verizon$time[verizon$group == "ILEC"]
+time_clec <- verizon$time[verizon$group == "CLEC"]
+observed_repair <- mean(time_ilec) - mean(time_clec)
+
+n_ilec <- length(time_ilec)
+n_clec <- length(time_clec)
+
+B <- 10^4
+set.seed(123)
+time_ilec_boot = time_clec_boot = time_diff_boot <- numeric(N)
+for (i in 1:B)
+ {
+  sample_ilec <- sample(time_ilec, n_ilec, replace = TRUE)
+  sample_clec <- sample(time_clec, n_clec, replace = TRUE)
+  time_ilec_boot[i] <- mean(sample_ilec)
+  time_clec_boot[i] <- mean(sample_clec)
+  time_diff_boot[i] <- mean(sample_ilec) - mean(sample_clec)
+}
+```
+
+Next, we plot the bootstrap distributions. 
+
+```{r, fig.height=6}
+
+par(mfrow=c(3,2))
+#bootstrap for ILEC
+hist(time_ilec_boot, main = "Bootstrap distribution of ILEC means",
+    xlab = "means")
+abline(v = mean(time_ilec), col = "blue")
+abline(v = mean(time_ilec_boot), col = "red", lty=2)
+
+qqnorm(time_ilec_boot)
+qqline(time_ilec_boot)
+
+#bootstrap for CLEC
+hist(time_clec_boot, main = "Bootstrap distribution of CLEC means",
+    xlab = "means")
+abline(v = mean(time_clec), col = "blue")
+abline(v = mean(time_clec_boot), col = "red", lty = 2)
+
+qqnorm(time_clec_boot)
+qqline(time_clec_boot)
+
+#Different in means
+hist(time_diff_boot, main = "Bootstrap distribution of difference in means")
+abline(v = mean(time_diff_boot), col = "red", lty = 2)
+abline(v = observed_repair, col = "blue")
+
+qqnorm(time_diff_boot)
+qqline(time_diff_boot)
+```
+
+Looks like the `ilec` bootstrap distribution 
+is symmetric and has a narrow spread (mostly due
+to large sample size). The `clec` bootstrap 
+distribution has a larger spread (due to small 
+sample size) and is very skewed. The difference 
+in repair times bootstrap distribution is alo 
+strongly skewed with a wide spread. 
+
+
+### Boostrap percentile confidence intervals
+
+The interval between 2.5 and 97.5 percentiles of
+the bootstrap distribution of a statistic is a 95% 
+_bootstrap percentile confidence interval_ for the 
+corresponding parameter.  
+
+**We can then say that we are 95% confident that the 
+true statistic lies within this interval**
+
+In our example, we can extract the 2.5 and 97.5 
+percentiles using the `quantile()` function: 
+
+```{r}
+mean(time_diff_boot)
+quantile(time_diff_boot, c(0.025,0.975))
+```
+
+Thus, we can say that with 95% confidence, the repair
+times for the ILEC customers are, on average, 
+`r round(quantile(time_diff_boot, c(0.025,0.975))[[1]],2)` 
+to `r round(quantile(time_diff_boot, c(0.025,0.975))[[2]],2)`
+hours shorter than the repair times for CLEC 
+customers. 
+
+
+## Relationship between the bootstrap and Monte Carlo simulations
+
+
+The bootstrap is an example of a more generalized idea called
+_Monte Carlo_ methods or simulations. Here the idea is the boostrap 
+is based on using data that we have to estimate the uncertainity of 
+a statistic or an estimator (i.e. we don't need to know the true
+distribution because we treat the original data as the population 
+and sample with replacement from it). 
+
+However, Monte Carlo simulations are broadly defined as approaches
+that generate data from the same distribution or original population
+to similarly estimate the uncertainty of a test statistic. 
+
+For example, our example of simulating poll data from pollsters 
+(Case Study 1 under Sampling distribution) was an example of a 
+Monte Carlo simulation. We assumed the true proportion of republican 
+voters ($p$) was $p=0.47$ and then wanted estimate the uncertainty 
+of $\hat{p}$ after 85 pollsters all conducted surveys of 
+sample sizes $n=1000$. 
+
+```{r}
+B <- 85
+n <- 1000
+p <- 0.47
+phat <- replicate(B, {
+  X <- sample(c(0,1), size=n, replace=TRUE, prob=c(1-p, p))
+  mean(X)
+})
+
+hist(phat, main = "Distribution of p-hat from 85 pollsters\nconducting surveys of size 1000")
+```
