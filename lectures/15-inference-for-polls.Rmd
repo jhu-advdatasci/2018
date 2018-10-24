@@ -1,0 +1,548 @@
+---
+title: Statistical Inference for Election Polling 
+date: Oct 24, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", 
+                      out.width = '70%')
+```
+
+First, we load a few R packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+# Motivation
+
+In 2012, Nate Silver [declared](http://fivethirtyeight.blogs.nytimes.com/fivethirtyeights-2012-forecast/?_r=0) that Barack Obama had a 91% chance of winning the election and 
+he "appears poised for a decisive electoral victory". 
+
+![](https://github.com/datasciencelabs/2016/raw/master/lectures/inference/pics/nate-silver-1.png)  |  ![](https://github.com/datasciencelabs/2016/raw/master/lectures/inference/pics/nate-silver-2.png)
+
+Several pundits were not happy. Here is what Joe Scarborough had to say:
+
+> Anybody that thinks that this race is anything but a tossup right now is such an ideologue, they should be kept away from typewriters, computers, laptops and microphones for the next 10 days, because they’re jokes. 
+
+Let's explore this. We have seen how to use the API 
+for theHuffington Post US Opinion Polling data, 
+which provides US opinion poll data on various 
+political races and other non-political opinion polls. 
+
+There is an R package called 
+[`pollstR`](https://cran.r-project.org/web/packages/pollstR/index.html)
+which provides an easy user interface. 
+
+So if we wanted to look at the polls data right 
+before the election (on and after Nov 4, 2012), 
+we could use the `pollster_charts_polls()` function
+which needs a `slug` argument. 
+
+We will use this 
+[poll data](http://elections.huffingtonpost.com/pollster/2012-general-election-romney-vs-obama). 
+Inside the url, the end of it is `2012-general-election-romney-vs-obama`,
+which is the slug that we use below. 
+
+```{r, echo=FALSE, cache=TRUE, warning=FALSE, message=FALSE}
+library(pollstR)
+race2012 <- pollster_charts_polls(slug = '2012-general-election-romney-vs-obama',
+                                  after= as.Date("2012-11-04"), max_pages = Inf)
+head(race2012$content)
+```
+
+Next, we can calculate the difference between the 
+proportion of individuals voting for Obama and Romney: 
+
+```{r}
+polls <- race2012$content %>% 
+  select(Obama, Romney, margin_of_error, observations, 
+         start_date, end_date, partisan_affiliation) %>% 
+  mutate(diff = Obama - Romney, 
+         margin_of_error=ifelse(is.na(margin_of_error),0,margin_of_error)) %>% 
+  rename(n=observations) %>% 
+  arrange(diff) 
+head(polls)
+```
+
+We can visualize the difference and an upper bound 
+and lower bound of uncertainty for each poll: 
+
+```{r}
+polls %>% 
+  ggplot( aes(seq_along(diff), Obama-Romney, 
+              min=diff-2*margin_of_error,
+              max=diff+2*margin_of_error)) + 
+  geom_point() + geom_errorbar() + xlab("") + 
+  theme(axis.ticks = element_blank(),
+        axis.text.x = element_blank()) + 
+  geom_hline(yintercept = 0, color=1, size=2) + 
+  geom_hline(yintercept = 3.9, color=2, size=2) 
+```
+
+The red line represents the true difference (3.9%) between
+the proportion of people who voted for Obama vs Romney. 
+
+Not only did Nate Silver correctly predict that Obama would
+win, but he also predicted the outcome of all 50 states and 
+DC correctly. Here, we will explain how _poll aggregators_, 
+such as Fivethirtyeight, use statistics and data science 
+to make these predictions. 
+
+Specifically, they use probability, statistical inference 
+and modeling. In this lecture we will talk about the first two
+and the next lecture will focus on the third. 
+
+First let's talk about the data themselves
+(opinion polls), what it means to have variability between 
+different polls, what a _margin of error_ means, and an 
+brief introduction to confidence intervals. 
+
+## Data 
+
+Opinion polls are commonly used during elections to describe the 
+opinions held by a specific population on a topic of interest. 
+Instead of asking for the opinions of the entire population 
+(impractable and costly), we typically can ask a random sample of 
+people their opinions and try to infer the opinions of the entire 
+population from the random sample. 
+
+In statistics, we describe this idea as _statistical inference_ and
+we can use this theory to describe things such as which candidate 
+is likely to win an election, job approval or support of a proposed
+law or amendement. Opinion polls can also be useful for determining
+how and where to invest money to increase voter registration or 
+voting efforts. 
+
+There are new aggregation sites, such as 
+[Real Clear Politics](http://www.realclearpolitics.com) 
+that aggregate and publish poll results. We will be using it in this
+and the next lecture and you will use it in your homework assignment, 
+where you will be predicting the outcome of the 2018 Senate Midterm
+Elections. 
+
+It is important to note that forecasting elections is a
+complicated process. Also, for example, presidential 
+elections are not determined by the popular vote, but we 
+still use the popular vote here to illustrate our example. 
+
+In our poll data example, we see that the estimated 
+difference between Obama and Romney (or the _spread_) varies 
+across the different pollsters, but hovers around the 
+actual difference of 3.9%. There is also something called
+_margin of error_ that is reported (also known as MoE sometimes). 
+
+Let's explore this type of data by generating our own imaginary
+election with 1 million voters (population) of which proportion 
+$p$ are republicans and $1-p$ are democrats. To keep it 
+interesting we will keep generate $p$ at random and not peek. 
+
+```{r}
+n <- 10^6 ## number of voters
+set.seed(1) ## so we all get the same answer
+## pick a number between 0.45 and 0.55 (don't peek!!!!!):
+p <- sample(seq(0.45,0.55,0.001),1) 
+x <- rep(c("R","D"), n*c(p, 1-p))
+x <- sample(x) ## not necessary, but shuffle them
+```
+
+The population is now fixed. There is a true proportion $p$,
+but we don't know it.
+
+On election day we will do the following to decide who 
+wins (don't ruin the fun by doing it now!):
+
+(DON'T RUN THIS CODE CHUNK IF YOU WANT TO BE SURPRISED)
+```{r, eval=FALSE}
+prop.table(table(x)) # expressed as fractions
+```
+
+Pollsters try to _estimate_ $p$, but asking 1 million people is 
+actually unnecessary so instead, they take a poll. To do this 
+they take a random sample. They pick $N$ random voter phone 
+numbers, call, and ask. Assuming everybody answers and every 
+voter has a phone, we can mimic a random sample of 25 people 
+with:
+
+```{r}
+poll <- sample(x, 25, replace = TRUE)
+poll
+```
+
+The pollster then looks at the proportion of republicans in the sample
+and uses this information to predict $p$. In statistics, we say try
+to _estimate_ $p$. 
+
+```{r}
+prop.table(table(poll))
+```
+
+Who is predicted to win? Do you think this is
+a good _estimate_ of $p$? We will see how 
+powerful statistics is at informing us about 
+exactly how good it is.
+
+**Notation**: We use lower case $x$ for the population of 
+all voters and capital letters $X$ for the random sample.
+
+# Really quick overview of statistical inference
+
+## Variability between polls
+
+We can repeat the above process multiple times by taking 
+a new random sample of size $N=25$ people to poll 
+individuals if they will vote for a democrat or republican
+and we see that the observed number varies: 
+
+```{r}
+X <- sample(x, 25, replace = TRUE)
+sum(X=="R")
+
+X <- sample(x, 25, replace = TRUE)
+sum(X=="R")
+
+X <- sample(x, 25, replace = TRUE)
+sum(X=="R")
+```
+
+Note how the observed number varies. We refer to this as 
+_random_ or _chance_ variation. How does this random variable
+relate to our quantity of interest $p$? Statistical theory 
+has a lot to teach about this and is the main tool used by
+pollsters and poll aggregators.
+
+## Random sampling 
+
+Let's turn the republicans into 1s and democrats into 0s and 
+model this process like drawing a random sample of beads from 
+a jar and calculating the number of red (or blue) beads. 
+
+```{r}
+x <- as.numeric(x=="R")
+X <- sample(x, 25, replace = TRUE)
+sum(X)
+```
+
+Because we have the true proportion $p$ (but hidden from us), 
+we can do this a bit quicker by simply using: 
+
+```{r}
+X <- sample(c(1,0), 25, replace = TRUE, prob=c(p,1-p))
+sum(X)
+```
+
+## The Expected Value and Standard Error
+
+Using the sampling model described above, we can
+calculate the _expected value_ of the random variable 
+and the _standard error_, which gives us an idea 
+of how the size of the variation around the expected value.
+
+**Recall**: We know from the Central Limit Theorem that if 
+$X \sim Binom(N,p)$ and $\hat{p} = X/N$, the observed 
+proportion of successes, then for sufficiently large
+$n$, the sampling distirbution of $\hat{p}$, which is our 
+_estimate_ of $p$, is approximately 
+normal with mean $p$ and standard deviation 
+$\sqrt{p(1-p)/N}$. Simiarly the sampling distribution of
+$X$ is approximately normal with mean $Np$ and standard
+deviation $\sqrt{Np(1-p)}$. 
+
+Let $X$ be the number of republicans in our random sample 
+of size $N=25$. Then, the expected value of the proportion of 
+individuals voting for a republican in our sample is 
+
+$$\mbox{E}(X/25) = p$$
+and the standard error is 
+
+$$\mbox{SE}(X/25) = \sqrt{p (1-p) / 25}$$
+
+which implies that $X/25$ will be $p$ plus some chance error.
+The standard error gives us an idea how large the error is.
+
+By making $N$ larger we can make our standard error smaller. 
+The _Law of Large Numbers_ tells us that the bigger $N$ 
+the closer the sample average gets to the average of the 
+population which is the quantity we want to estimate.
+
+So our best guess for $p$ is the observed proportion 
+
+```{r}
+X <- sample(c(1,0), 25, replace = TRUE, prob=c(p,1-p))
+p_hat <- mean(X)
+
+cat("Our estimate of the percent of republicans is", p_hat,
+    "plus or minus", round( sqrt(p_hat*(1-p_hat)/25), 3))
+```
+
+Which is not terribly useful. 
+
+However, now we know that we can be more precise 
+by taking a larger poll.
+
+For example, if $p=0.5$, how large should the poll be to have a
+standard error of 2% or less? 
+
+$$\sqrt{0.5(1-0.5)/N} = \sqrt{0.25/N} = 0.02$$ 
+implies
+$$N = 0.25/0.02^2 = 625$$
+
+We can take a poll with sample size $N=625$ and report 
+expected value and standard error similar to before: 
+```{r}
+N <- 625
+X <- sample(x, N, replace = TRUE)
+p_hat <- mean(X)
+cat("Now our estimate of the percent of republicans is",p_hat,
+    "plus or minus", round( sqrt(p_hat*(1-p_hat)/N), 2))
+```
+
+## Probability Distribution for Random Variables
+
+The plus or minus statements above are not very precise.
+Is it possible to say more? Can we, for example, compute the 
+probability that $\hat{p}$ is within 2% of the actual $p$? It turns 
+out that we can. 
+
+There are two main approaches to do this: 
+
+1. Using Monte Carlo simulations
+2. Using Central Limit Theorem for normal approximations
+
+### Using Monte Carlo simulations 
+
+Repeat the exercise of taking a poll of 625 likely voters, 10,000 times.
+Without peaking at $p$ study the distribution of $\hat{p}-p$. 
+Have we seen this distribution before? 
+
+```{r}
+N <- 625
+B <- 10^4
+error <- replicate(B,{
+  X <- sample(x, N, replace = TRUE)
+  mean(X)-p
+})
+hist(error)
+```
+
+The distribution above is the _probability distribution_
+of our random variable. Knowing this distribution will be 
+extremely helpful because we can, for example, report 
+the probability that our error is smaller or larger 
+than 0.02: 
+
+```{r}
+mean(abs(error) > 0.02)
+```
+
+
+### Using Central Limit Theorem
+
+Using the Monte Carlo simulations (i.e. conducting 10,000 polls),
+we can see that the probability distribution of $\hat{p}$ 
+is very well approximated with the normal distribution. 
+
+```{r}
+qqnorm(error)
+qqline(error,col=2)
+```
+
+From the CLT, we also know $\hat{p}$ follows a normal
+distribution with expected value $p$ and standard error 
+approximately equal to $\sqrt{\hat{p} (1-\hat{p})}/\sqrt{N}$. 
+
+This implies that the following random variable $Z$, which 
+is equal to
+
+$$Z = \sqrt{N}\frac{ \hat{p} - p}{\sqrt{\hat{p} (1-\hat{p})}}$$
+
+is approximately normal with expected 0 and standard deviation 1.
+
+The fact that the `error` distribution is centered at 0 confirms that 
+the expected value of $\hat{p}$ is $p$. 
+
+The observed standard deviation of the errors is 
+
+```{r}
+sqrt(mean((error)^2))
+```
+
+and matches the theoretical standard error (0.02)
+
+```{r}
+sqrt(p*(1-p)/N)
+```
+
+And recall, how often was our error smaller or larger than 0.02? 
+```{r}
+mean(abs(error) > 0.02)
+```
+
+Interstingly, we could have predicted that 32% of `error`s were 
+larger than 0.02 using the normal approximation. 
+
+Let's formally define what we mean by _margin of error_. 
+
+## Margin of error 
+
+Consider $$ \delta = 0.02$$
+
+If we want to know, what's the probability that 
+the `error` ($\hat{p}-p$) is within $\delta$: 
+
+$$\mbox{Pr}( - \delta < \mid p - \hat{p} \mid < \delta)$$
+We can use the fact that 
+$$Z = \sqrt{N}\frac{ \hat{p} - p}{\sqrt{\hat{p} (1-\hat{p})}} \sim N(0,1)$$
+and re-write the above probability like this: 
+
+$$\mbox{Pr}( | Z | < \sqrt{N} \delta/\sqrt{p(1-p)})$$
+
+Because $Z$ is approximately standard normal this 
+probability is approximately
+```{r}
+a = sqrt(N)*.02/sqrt(p_hat*(1-p_hat))
+a
+pnorm(a)-pnorm(-a)
+```
+
+So we can ask, what proportion of the normal curve 
+is **more** than 1 SD away from the population average?
+
+```{r}
+## compare
+mean(abs(error) > 0.02)
+
+## to
+a = sqrt(N)*.02/sqrt(p_hat*(1-p_hat))
+pnorm(-a) + (1-pnorm(a))
+```
+
+Because conducting 10,000 polls is practically impossible, we can just use 
+the mathematical theory to estimate is $\hat{p}$ and 
+there is 32% chance that our `error` ($\hat{p} - p$) is larger than 2%. 
+
+## Confidence Intervals
+
+If we create intervals that miss the target 32% of the time, 
+we will not be considered good forecasters. We can always make less
+bold predictions, such as "the percent of republicans will be between
+0% and 100%" but that will not help our reputation either. 
+Can we find a better balance? 
+
+Because there is chance variation, it is impossible to hit the target 
+100% of time unless we state the obvious "between 0% and 100%". 
+So let's compromise a bit. If we hit the target 95% of the time, 
+chances are we will be considered good forecasters. Can we use
+the theory above to construct such interval?
+
+Yes, using the CLT, we know
+
+$$ \hat{p} - z_{1-\alpha} \sqrt{\hat{p} (1-\hat{p})} / \sqrt{N} \leq p \leq \hat{p}  + z_{1-\alpha} \sqrt{\hat{p} (1-\hat{p})} / \sqrt{N}$$
+or 
+
+```{r}
+p_hat + c(-1,1)*qnorm(0.975)*sqrt(p_hat*(1-p_hat))/sqrt(N)
+```
+
+This interval has a 95% chance of _covering_ the true $p$
+
+Did we actually make a correct prediction? It's election night and we we will find out
+
+```{r}
+ci <- p_hat + c(-1,1)*qnorm(0.975)*sqrt(p_hat*(1-p_hat))/sqrt(N)
+p 
+ci[1] <= p & ci[2] >= p
+```
+
+### Using Monte Carlo simulations 
+
+Note that Nate Silver stated that Obama had a 90% chance of 
+winning. Was this a confidence interval?
+
+The description we have given up to know says nothing 
+about the probability of winnings. In fact, the statement 
+does not even make sense because $p$ is fixed. It is not 
+random. We should not make probability statements. 
+
+In other courses, you will learn about Bayesian statistics,
+where it makes sense to make data-based statements such
+as "Obama has a 90% chance of winning". 
+
+Here we clarify how we interpret margins of error and confidence intervals.
+
+The 95% confidence interval 
+
+```{r}
+p_hat + c(-1,1)*qnorm(0.975)*sqrt(p_hat*(1-p_hat))/sqrt(N)
+```
+
+is random because `p_hat` is random.  
+
+Let's use a Monte Carlo simulation to see this 
+with $B=100$ simulations:
+
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+N <- 625
+B <- 100
+tab  <- replicate(B,{
+  X <- sample(x, N, replace = TRUE)
+  p_hat <- mean(X)
+  ci <- p_hat + c(-1,1)*qnorm(0.975)*sqrt(p_hat*(1-p_hat))/sqrt(N)
+  hit <- (ci[1] <= p) & (ci[2] >= p)
+  c(p_hat,ci,hit)
+})
+
+tab <- data.frame(poll=1:ncol(tab), t(tab))
+names(tab)<-c("poll","estimate","low","high","hit")
+tab <- mutate(tab, hit=ifelse(hit, "Hit","Miss") )
+ggplot(tab, aes(poll,estimate,ymin=low,ymax=high,col=hit)) + 
+  geom_point() + geom_errorbar() + 
+  coord_flip() + geom_hline(yintercept = p)
+```
+
+Notice how the interval is different after each poll: it's random. 
+
+The 95% relates to the probability that this random interval 
+falls on top of $p$, not that $p<.50$ or whatever other statements
+related to the probability of winning. In the figure above, that
+shows the interval for 100 polls, you can see that interval fall 
+on $p$ about 95% of the time.
+
+What percent of confidence intervals with margins of error of
+0.035 would correctly predict the election? 
+
+We can define $\delta = 0.035$ and use the CLT theory like 
+before: 
+
+```{r}
+a = sqrt(N)*.035/sqrt(p_hat*(1-p_hat))
+pnorm(a)-pnorm(-a)
+```
+This a 92% confidence interval. Which is not bad, but it's not the 95% we set out for. 
+
+Alternatively, we can check with a Monte Carlo simulation.
+
+```{r}
+N <- 625
+B <- 10^5
+success  <- replicate(B,{
+  X <- sample(x, N, replace = TRUE)
+  p_hat <- mean(X)
+  ci <- p_hat + c(-0.035,0.035)
+  ci[1] <= p  & ci[2] >= p
+})
+mean(success)
+```
+
