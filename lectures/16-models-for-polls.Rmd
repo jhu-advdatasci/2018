@@ -1,0 +1,584 @@
+---
+title: Statistical Models for Election Polling
+date: Oct 29, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", 
+                      out.width = '70%')
+```
+
+First, we load a few R packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+# Motivation
+
+"All models are wrong, but some are useful" -George E. P. Box
+
+We have implicitly been using a very simple linear models. 
+We have been trying to predict a fixed parameter by taking samples. 
+For example, we have tried to estimate the proportion of individuals
+who will vote for a republican candidate or the difference in the 
+proportion of votes two candidates, for example Obama and Romney,
+will receive. Here, we will us general notation and represent the 
+parameter we are trying to estimate with $\theta$. We then 
+obtain draws from a sampling model. 
+
+We will denote the observed values with $Y$ and use indexes 
+to denote the fact that we make, say, $N$ observations:
+
+$$Y_i = \theta + \varepsilon_i, i = 1, \dots N$$ 
+
+Each observation has an _error_ term $\varepsilon$. 
+We assume that the expected value of the error is 0 and 
+very often assume that the standard deviation is constant
+$\sigma$. 
+
+# Data Wrangling 
+
+We will use 2012 Presidential Election (Obama vs Romney)
+poll data for this lecture. We've already learned how to
+use the [`pollstR`](https://cran.r-project.org/web/packages/pollstR/index.html)
+R package to extract historical poll data. 
+
+```{r, message=FALSE, warning=FALSE}
+library(pollstR)
+library(lubridate)
+race2012 <- pollster_charts_polls(slug = '2012-general-election-romney-vs-obama')
+
+polls2012 <- race2012$content %>% 
+  select(Obama, Romney, margin_of_error, observations, 
+         start_date, end_date, survey_house) %>% 
+  mutate(Obama = Obama*0.01, 
+         Romney = Romney*0.01, 
+         diff = Obama - Romney, 
+         margin_of_error=ifelse(is.na(margin_of_error),0,margin_of_error)*0.01, 
+         days = start_date - ymd('2012-11-06'), 
+             weeks = floor(days/7)) %>% 
+  rename(n=observations) 
+head(polls2012)
+```
+
+# Exploratory Data Analysis
+
+First, let's figure out how many polls we have? 
+and on average, how big are the individual poll 
+sample sizes? 
+
+```{r}
+nrow(polls2012)
+summary(polls2012$n, na.rm=TRUE)
+```
+
+Oh ok, so we have some polls without sample sizes. 
+Let's remove those. 
+
+```{r}
+polls2012 <- polls2012[!is.na(polls2012$n), ]
+```
+
+We can use a scatter plot to show the number of polls 
+(y-axis) for each week (x-axis). 
+
+```{r}
+polls2012 %>% 
+    group_by(weeks) %>% 
+    summarize(num_polls=n()) %>%
+    ggplot(aes(weeks, num_polls)) + 
+        geom_point()
+```
+
+We see many of the polls 10-20 weeks prior to the
+election only had a handful of polls. 
+
+We can also explore how the different pollsters 
+have a different distribution for the differences. 
+
+First, let's see which are the pollsters with the 
+most polls: 
+
+```{r}
+head(sort(table(polls2012$survey_house), 
+          decreasing = TRUE))
+```
+
+Let's keep the top ten pollsters
+
+```{r}
+top_pollsters <- 
+  names(sort(table(polls2012$survey_house), decreasing = TRUE)[1:10])
+top_pollsters
+```
+
+We can use boxplots to plot the distribution of 
+the difference between Obama and Romney stratified 
+by pollster. 
+
+```{r}
+polls2012 %>% 
+    filter(survey_house %in% top_pollsters) %>%
+    ggplot(aes(reorder(survey_house, diff), diff, fill=survey_house)) +
+  geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+We get the sense that many pollsters were reporting 
+differences in favor of Obama, but some were favoring
+Romney. Let's try and estimate the true difference 
+between Obama and Romney using poll data.
+
+# Linear models 
+
+The goal of using linear models is to try and
+estimate some parameter $\theta$ by observing 
+draws from a sampling model.  
+
+If we define $Y_i$ as the observed difference in 
+each poll between Obama and Romney, we can 
+write a linear model:
+
+$$Y_i = \theta + \varepsilon_i, i=1, \dots, N$$
+
+where $Y_1, Y_2, \ldots, Y_N$ are the observed values with $N$ 
+total observations, $\theta$ is the true difference in the 
+polls on election night and $N$ is the number of polls
+we observe (i.e. in our dataset: $N=$`r nrow(polls2012)`). 
+
+Each observation has an *error* term $\varepsilon_i$ that 
+defines the difference between the true parameter value 
+($\theta$) and the observed value ($Y_i$). 
+
+How do we model $\varepsilon$? We assume 
+that the expected value of the error term is 0 and
+very often assume the standard deviation is a 
+contant $\sigma$. 
+
+In the next few sections, we will explore how to 
+estimate $\theta$ and $\sigma$
+
+
+## Sampling model 
+
+We define the sampling distribution as 
+
+$$ Y | \theta \sim N(\theta, \sigma^2/N) $$
+
+where 
+
+* $Y$ is the observed difference in each poll between Obama and Romney
+* $\theta$ is the true difference in the polls on election night
+* $\sigma^2$ is the observed sample variance
+* $N$ is the number of polls we observe (i.e. each poll is an observation here)
+
+## Estimating parameters
+
+### Estimate $\theta$
+
+Previously, we have hinted at how we can aggregate results 
+using what amounts to a weighted average. For example, in our 
+example, we can create an estimate of $\theta$ using the 
+standard approach to fitting linear models (e.g. minimizing
+the least squares equation): 
+
+$$ \sum_{i=1}^N (Y_i - \theta)^2 $$
+
+This is called the _least squares estimate_ (LSE). In this case
+is easy to show, with calculus, that it is the sample average:
+
+$$ \hat{\theta} = \frac{1}{N}\sum_{i=1}^N Y_i = \bar{Y} $$
+
+For example, we can take the sample average across all 
+polls in our dataset with sample sizes ranging from 
+1000 to 1500: 
+
+```{r}
+polls2012 %>% 
+    filter(n > 1000 & n < 1500) %>% 
+    summarize(tot_poll = n(),
+              theta_hat = mean(diff))
+```
+
+which is not so far off from the 3.9% true 
+difference on the 2012 election night. 
+
+Now, recall from the sampling model that the expectation
+of $Y$ is $\theta$ and the standard error is 
+$\sigma / \sqrt{N}$ with $N$ the number of observations 
+and $\sigma$ the standard deviation of the distribution 
+of $\varepsilon$. 
+
+So how can we estimate $\sigma$? 
+
+### Estimate $\sigma$ 
+
+There are two main ways to estimate $\sigma$: 
+
+1. Using the Central Limit theorem (theoretical)
+2. Using the sample standard deviation (empirical)
+
+#### 1. Using Central Limit Theorem (theoretical) 
+
+If we have one poll with sample size $n$ (e.g. $n=1500$), 
+and if $p$ is the proportion of individuals voting for 
+just one candidate (e.g. republicans), the CLT tells
+us that the standard error for $\hat{p}$ is 
+
+$$\frac{\sqrt{p (1-p)}}{\sqrt{n}}$$
+But, if we are estimating the difference in percentages 
+between two candidates ($\theta$), then the estimate 
+is approximated by 
+
+$$ \hat{\theta} = \hat{p} - (1-\hat{p}) = 2\hat{p} - 1 $$. 
+
+This implies that the standard error of $\hat{\theta}$ is
+
+$$ 2 \sqrt{ p (1 - p)} / \sqrt{n} $$
+
+Therefore, because each $Y_i$ a separate poll then 
+the standard deviation of $\varepsilon$ should be about 
+$2 \sqrt{ p (1 - p) }/ \sqrt{n}$:
+
+or
+
+$$ \varepsilon \sim \mbox{Normal}\left( 0, \frac{2\sqrt{p (1-p)}}{\sqrt{n}} \right) $$
+
+where $n$ is the poll size from a single poll. In our example, 
+let's consider all polls of size ranging from 1000 to 1500 
+and estimate $\sigma$: 
+
+```{r}
+polls2012 %>% 
+  filter(n > 1000 & n < 1500) %>% 
+  summarize(theta_hat = mean(diff), 
+            sigma_hat_theor = 2 * sqrt(mean(Romney)*(1-mean(Romney))) / sqrt(1250))
+```
+
+This theory is extremely useful when we just have one poll. 
+
+However, if we are fortunate enough to be able to observe multiple 
+polls results (e.g. polls from different pollsters or polls from 
+different weeks over time), we can use the poll data directly 
+to estimate $\sigma$ (instead of using the statistical theory above). 
+
+#### 2. Using sample standard deviation (empirical)
+
+The typical strategy is to use the sample standard deviation formula: 
+
+$$ s = \sqrt{ \frac{1}{N-1}\sum_{i=1}^N (Y_i - \bar{Y})^2} $$
+
+where $N$ is the total number of polls we observe. In our case, 
+we can use the `sd()` function: 
+
+```{r}
+polls2012 %>% 
+  filter(n > 1000 & n < 1500) %>% 
+  summarize(theta_hat = mean(diff), 
+            sigma_hat_emp = sd(diff))
+```
+
+**IMPORTANT**: Do not confuse the poll sample size $n$ with the 
+number of observations in our model above $N$. In the model above we
+treat each poll as a single observation and we observe $N$ polls. But
+it is important to keep in mind that each poll we observe had 
+a poll size associated with it (i.e. $n$). 
+
+
+# Confidence intervals
+
+Next, we will use the CLT to construct a 95% confidence 
+interval for $\hat{\theta}$ using the empirical (and then 
+theoretical) approach to estimate the standard deviation 
+$\sigma$. 
+
+```{r}
+ests <- polls2012 %>% 
+    filter(n > 1000 & n < 1500) %>% 
+    summarize(tot_poll = n(),
+              theta_hat = mean(diff), 
+              sigma_hat_emp = sd(diff),
+              sigma_hat_theor = 2 * sqrt(mean(Romney)*(1-mean(Romney))) / sqrt(1250))
+ests
+```
+
+Recalling the standard error or $\theta$ is 
+$\sigma / \sqrt{N}$ with $N$ the number of observations 
+and $\sigma$ the standard deviation of the distribution 
+of $\varepsilon$, then a 95% confidence interval using 
+the empirical approach to estimate $\sigma$ is: 
+```{r}
+ests$theta_hat + 
+    c(-1,1) * (ests$sigma_hat_emp / sqrt(ests$tot_poll)) * qnorm(0.975)
+```
+
+And a 95% confidence interval using the theoretical
+approach to estimate $\sigma$ is: 
+```{r}
+ests$theta_hat + 
+    c(-1,1) * (ests$sigma_hat_theor / sqrt(ests$tot_poll)) * qnorm(0.975)
+```
+
+
+
+## Why does the theory not match what we see in the data? 
+
+In general, if the model is a good fit to the data, the 
+empirical estimate of $\sigma$ should match what the 
+the statistical theory says it should be. Recall this is our model: 
+
+$$ Y_i = \theta + \varepsilon_i, i = 1, ..., N$$
+
+Instead, we see the empirical estimate of $\sigma$ 
+is larger than what the theory says it should be.
+Why is this?? 
+
+Well, there are many possible reasons for this. 
+Let's consider three reasons: 
+
+#### 1. Time effect 
+
+One possible reason is that if there is a strong 
+time (or "week") effect, then there is extra variability in the 
+data that is not being accounted for in the model. 
+
+```{r}
+polls2012 %>%
+    group_by(weeks) %>% 
+    mutate(num_polls=n()) %>%
+    filter(num_polls >= 5) %>% 
+    ungroup() %>%
+    ggplot(aes(end_date, diff)) + geom_point() + 
+        geom_smooth(span=0.5) + geom_hline(aes(yintercept=0)) + 
+        geom_hline(aes(yintercept=0.039))
+```
+
+We could modify the model to include another term $m_t$ that 
+represents the time (or "week") effect. 
+
+$$ Y_{t,i} = \theta + w_t + \varepsilon_{t,i} $$
+
+**Note**: We now have two indexes $t$ denoting week and
+$i$ an index for the $i$-th poll during week $t$.
+
+By including this extra term in our model, we are 
+saying that the variability observed in the polls 
+does not just come from $\varepsilon$. We are 
+saying there is extra or additional variabilty from
+time that we are ignoring. 
+
+We can model the time effects $w_t$ by making 
+assumptions about the expected value 
+and variance of of $w_t$. For example, we could 
+model this as a fixed effect and estimate it, for 
+example, [loess](https://en.wikipedia.org/wiki/Local_regression). 
+This is not that useful for forecasting as we don't 
+know if the trend will continue. More useful is 
+to model it as a random effect with its variance 
+depending on days left to the election (e.g. a model 
+with a decreasing variance as the weeks get closer 
+to the election.
+
+To incorporate information about the time effect, 
+we an use the fact that we see the variance 
+in the difference between Obama and Romney decreases 
+as we get closer to election night.  
+
+If we are 10 weeks away from election night, you can get an
+idea of the standard deviation of $w_t$ by looking at 10 weeks prior on
+previous elections. In previous elections we observe $\theta$ so we
+can actually observe $w_t$ + $\varepsilon$. We can 
+observe the this for several months and
+notice that it gets smaller and smaller as the election gets closer.
+
+#### 2. House effect 
+
+Another possible reason is from what's called 
+a *house effect* or pollster effect. If there was no pollster
+effect, we would expect the distributions (or boxplots)
+of the difference between Obama and Romney to be similar.  
+
+```{r}
+polls2012 %>% 
+    filter(survey_house %in% top_pollsters) %>%
+    ggplot(aes(reorder(survey_house, diff), diff, fill=survey_house)) +
+        geom_boxplot() + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+We would see that each pollster has a different distribution in the
+difference between Obama and Romney. We could modify the model 
+to include another term $p_j$ that represents the 
+pollster effect. 
+
+$$ Y_{t,i,j} = \theta + w_t + p_{j} + \varepsilon_{t,i,j} $$
+
+where $p_{j}$ a pollster effect for the $j^{th}$ pollster. 
+By including this extra term in our model, we are 
+saying that the variability observed in the polls 
+does not just come from $\varepsilon$. We are 
+saying there is extra or additional variabilty from
+the pollsters.  
+
+We can model the pollster specific effects $p_j$ by making 
+an assumption about the expected value of $p_j$ 
+(e.g. $\mbox{E}(p_j)=0$) and we can model the 
+pollster specific effects to have different variances. 
+To estimate these we can use previous election data. 
+With these in place, we can construct weighted estimates
+for $\theta$ that better estimate the variablity. 
+
+
+#### 3. General biases
+
+The last possible reason we'll consider here is from 
+what are called *general biases* that have not been 
+accounted for. Specifically, our assumption that 
+$\mbox{E}(p_j)=0$ is incorrect. This assumption says that,
+on average, pollsters are not biased, but this is not the
+case. Instead we need to add a general bias to the model
+
+$$Y_{t,i,j} = \theta + w_t + p_j + b + \varepsilon_{t,i,j}.$$
+
+But note we cannot estimate $b$ from the data: this 
+model is not identifiable. However, we can model $b$ 
+as a random effect with and estimate its variance from 
+past elections where we know $\theta$. 
+
+
+
+# 2018 Senate midterm elections
+
+In the United States, we will hold 
+[elections for our Senate](https://en.wikipedia.org/wiki/United_States_Senate_elections,_2018) 
+on November 6, 2018 with 33 of the 100 seats being 
+contested in regular elections and 2 seats being 
+contested in special elections. These are positions 
+are for six-year terms (Jan 3, 2019 to Jan 3, 2025). 
+
+The reason there are 33 Senate seats 
+is because the we have three 
+[classes in US Senate](https://en.wikipedia.org/wiki/Classes_of_United_States_Senators)
+made up of 33 or 34 Senate seats each. 
+One class of senate seats is up for 
+election every two years (staggering the
+three groups so not all senators are up 
+re-election at a given time). 
+
+For example, the 33 Senate seats of class 1 
+will be up for election in 2018, the elections 
+for the 33 seats of class 2 will take place 
+in 2020, and the elections for the 34 seats 
+of class 3 will be held in 2022.
+
+For this lecture we will focus on the [Senate race in Florida](https://www.realclearpolitics.com/epolls/2018/senate/fl/florida_senate_scott_vs_nelson-6246.html)
+between Bill Nelson (D) and Rick Scott (R). 
+
+First we will read in the data. 
+```{r, message=FALSE, warning=FALSE}
+library(rvest)
+state_url <- "https://www.realclearpolitics.com/epolls/2018/senate/fl/florida_senate_scott_vs_nelson-6246.html"
+h <- read_html(state_url)
+```
+
+What does the data look like: 
+```{r}
+tmp <- h %>% 
+  html_table() %>% 
+  .[[4]] %>% 
+  as_tibble() %>%
+  filter(Poll != "RCP Average")
+tmp
+```
+
+Next, we will do some data wrangling
+```{r}
+polls <- tmp %>% 
+  mutate(R = `Scott (R)`/100, 
+         D = `Nelson (D)`/100, 
+         diff = D-R) %>% 
+  separate(col=Date, into=c("start_date", "end_date"), 
+           sep=" - ", fill = "right") %>% 
+  mutate(start_date = mdy(paste0(start_date,"/18")), 
+         end_date = mdy(paste0(end_date,"/18")), 
+         days = start_date - ymd('2018-11-06'), 
+             weeks = floor(days/7)) %>% 
+  separate(Sample, into=c("n", "pop_type"), 
+           sep=" ", fill="left") %>% 
+  mutate(n = as.numeric(n)) %>% 
+      select(-MoE, -Spread, -`Scott (R)`, -`Nelson (D)`) 
+polls
+```
+
+We have a total of $N=$`r nrow(polls)` observations and 
+the individual poll sample sizes are on average 
+`r mean(polls$n)`: 
+
+```{r}
+hist(polls$n)
+```
+
+
+We can use a scatter plot to show the number of polls 
+(y-axis) for each week (x-axis). 
+
+```{r}
+polls %>% 
+    group_by(weeks) %>% 
+    summarize(num_polls=n()) %>%
+    ggplot(aes(weeks, num_polls)) + 
+        geom_point()
+```
+
+
+```{r}
+polls %>%
+    ggplot(aes(end_date, diff)) + 
+        geom_point() + 
+        geom_smooth(span=0.5) + 
+        geom_hline(aes(yintercept=0))
+```
+
+
+Similar to Obama and Romney, we can use linear models
+to estimate $\theta$ (difference between Nelson and
+Scott):
+
+$$Y_i = \theta + \varepsilon_i, i=1, \dots, N$$
+
+with $N=40$. Here I will estimate $\sigma$ using 
+the empirical approach (instead of the theoretical 
+approach using the CLT). 
+
+```{r}
+ests <- polls %>% 
+    summarize(tot_poll = n(),
+              theta_hat = mean(diff), 
+              sigma_hat_emp = sd(diff))
+ests
+```
+
+And a 95% confidence interval using 
+the empirical approach to estimate $\sigma$ is: 
+```{r}
+ests$theta_hat + 
+    c(-1,1) * (ests$sigma_hat_emp / sqrt(ests$tot_poll)) * qnorm(0.975)
+```
+
+Which includes 0, so we will have to call this a toss-up, 
+but it does look like the race is leaning towards Nelson. 
+
+We could improve upon this by taking into account biases such 
+as the time or house effect or other general biases using 
+historical data. 
