@@ -364,7 +364,7 @@ polls2012 %>%
         geom_hline(aes(yintercept=0.039))
 ```
 
-We could modify the model to include another term $m_t$ that 
+We could modify the model to include another term $w_t$ that 
 represents the time (or "week") effect. 
 
 $$ Y_{t,i} = \theta + w_t + \varepsilon_{t,i} $$
@@ -380,27 +380,27 @@ time that we are ignoring.
 
 We can model the time effects $w_t$ by making 
 assumptions about the expected value 
-and variance of of $w_t$. For example, we could 
-model this as a fixed effect and estimate it, for 
-example, [loess](https://en.wikipedia.org/wiki/Local_regression). 
-This is not that useful for forecasting as we don't 
-know if the trend will continue. More useful is 
-to model it as a random effect with its variance 
-depending on days left to the election (e.g. a model 
-with a decreasing variance as the weeks get closer 
-to the election.
+and variance of of $w_t$. For example, in more 
+formal statistics classes you can learn about 
+analysis of variance which does confirm strong 
+week effect: 
+
+```{r}
+tab <- polls2012 %>%
+          group_by(weeks) %>% 
+            mutate(num_polls=n()) %>%
+            filter(num_polls >= 5) %>% 
+            ungroup() %>%
+          group_by(survey_house) %>% 
+            filter(n() > 10)
+fit <- lm(diff ~ weeks, data=tab)
+summary(aov(fit))
+```
 
 To incorporate information about the time effect, 
-we an use the fact that we see the variance 
+we can use the fact that we see the variance 
 in the difference between Obama and Romney decreases 
-as we get closer to election night.  
-
-If we are 10 weeks away from election night, you can get an
-idea of the standard deviation of $w_t$ by looking at 10 weeks prior on
-previous elections. In previous elections we observe $\theta$ so we
-can actually observe $w_t$ + $\varepsilon$. We can 
-observe the this for several months and
-notice that it gets smaller and smaller as the election gets closer.
+as we get closer to election night. 
 
 #### 2. House effect 
 
@@ -408,6 +408,8 @@ Another possible reason is from what's called
 a *house effect* or pollster effect. If there was no pollster
 effect, we would expect the distributions (or boxplots)
 of the difference between Obama and Romney to be similar.  
+
+However, that's not what we see: 
 
 ```{r}
 polls2012 %>% 
@@ -417,10 +419,10 @@ polls2012 %>%
         theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-We would see that each pollster has a different distribution in the
-difference between Obama and Romney. We could modify the model 
-to include another term $p_j$ that represents the 
-pollster effect. 
+If we see that each pollster has a different 
+distribution in the difference between Obama and 
+Romney. We could modify the model to include another 
+term $p_j$ that represents the pollster effect. 
 
 $$ Y_{t,i,j} = \theta + w_t + p_{j} + \varepsilon_{t,i,j} $$
 
@@ -430,6 +432,19 @@ saying that the variability observed in the polls
 does not just come from $\varepsilon$. We are 
 saying there is extra or additional variabilty from
 the pollsters.  
+
+And in fact, we do see a strong week and house effect:
+
+```{r}
+tab <- polls2012 %>%
+          group_by(weeks) %>% 
+            mutate(num_polls=n()) %>%
+            filter(num_polls >= 5) %>% 
+            ungroup() %>%
+          filter(survey_house %in% top_pollsters)
+fit <- lm(diff ~ weeks + survey_house, data=tab)
+summary(aov(fit))
+```
 
 We can model the pollster specific effects $p_j$ by making 
 an assumption about the expected value of $p_j$ 
@@ -482,7 +497,8 @@ for the 33 seats of class 2 will take place
 in 2020, and the elections for the 34 seats 
 of class 3 will be held in 2022.
 
-For this lecture we will focus on the [Senate race in Florida](https://www.realclearpolitics.com/epolls/2018/senate/fl/florida_senate_scott_vs_nelson-6246.html)
+For this lecture we will focus on the 
+[Senate race in Florida](https://www.realclearpolitics.com/epolls/2018/senate/fl/florida_senate_scott_vs_nelson-6246.html)
 between Bill Nelson (D) and Rick Scott (R). 
 
 First we will read in the data. 
