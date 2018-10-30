@@ -36,9 +36,9 @@ We will use Slack to organize course discussions. There are channels to ask ques
 
 Staff          | Day, Time           | Location      |
  :------------ | :-----------------  | :-----------  |
-Guoqing        | Wed, 10-11am        | E3037         |
+Guoqing        | Tues, 3-4pm         | E3037         |
 Stephanie      | Wed, 2:20-3:00pm    | E3545         |
-Bingkai        | Thurs, 9:30-10:30am | E3030         |
+Bingkai        | Mon, 3-4pm          | E3030         |
 Roger          | Fri, 10:30-11:30am  | E3535         |
 
 
