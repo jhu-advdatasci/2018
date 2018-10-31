@@ -26,8 +26,10 @@ library(dslabs) # needs to be installed
 library(HistData) # needs to be installed 
 ```
 
-Much of the material in this lecture was taken from
-[here](https://github.com/datasciencelabs/2017/blob/master/lectures/regression/confounding.Rmd).
+Most of the material in this lecture was taken from
+[here](https://github.com/datasciencelabs/2017/blob/master/lectures/regression/confounding.Rmd) and 
+this wonderful [dsbook](https://rafalab.github.io/dsbook/association-is-not-causation.html)
+from Rafael Irizarry. 
 
 # Motivation
 
