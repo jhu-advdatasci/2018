@@ -1,0 +1,668 @@
+---
+title: Random Forests and Support Vector Machines
+date: Nov 12, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", 
+                      out.width = '70%')
+```
+
+First, we load a few R packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rpart) ## need to install
+library(caret)
+```
+
+**Attribution**: A lot of the material for this lecture came from the following resources
+
+* [An Introduction to Statistical Learning, 2013](https://www.springer.com/us/book/9781461471370) by James, Witten, Hastie and Tibshirani
+* [Slides on decision trees](https://github.com/datasciencelabs/2016/blob/master/lectures/ml/decision-trees.Rmd) by Rafael Irizarry 
+* [Blogpost on decision trees](https://leightonzhang.com/2016/09/08/trees-and-forest/) by Leighton Zhang
+
+# Motivation
+
+In the last lecture, we described two types of 
+machine learning algorithms: linear approaches, 
+including linear regression, generalized linear models (GLM),
+discriminant analysis, and model-free approaches (such
+as $k$-nearest neighbors). The linear approaches were 
+limited in that the partition of the prediction space 
+had to be linear (or in the case of QDA, quadratic). 
+
+Today, we look at a set powerful, popular, and well-studied 
+methods that adapt to higher dimensions and also allow
+these regions to take more complex shapes, and in some 
+cases, still produce models that are interpretable.
+
+We will focus on decision trees (including both regression and 
+classification decision trees) and their extension to random 
+forests.
+
+# Decision trees 
+
+Decision trees can be applied to both regression and
+classification problems. We first consider regression 
+problems, and then move on to classification.
+
+## Motivating example 1
+
+Let’s use a decision tree to decide what to 
+eat for lunch!
+
+Suppose the things that matter to you are 
+
+1. the location of the restaurants and 
+2. waiting time
+
+What we would like to do is classify what to
+eat and predict how much to cost, based on our
+ideal waiting time and money we have.
+
+The figure below shoes a decision tree. It consists of
+splitting rules, starting at the top of tree and 
+consists of the following components: 
+
+* The tree grows from the root Whatever Food, which contains all possible food in the world.
+* Segments of the tree are known as branches
+* Internal node splits at some threshold, and two sides stand for two separated region
+* Leaves (or regions or terminal nodes) are final decisions. Multiple leaves may point to the same label.
+
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://leightonzhang.files.wordpress.com/2016/09/what-to-eat-tree.png")
+```
+[image source](https://leightonzhang.files.wordpress.com/2016/09/what-to-eat-tree.png)
+
+We can also convert the tree into different regions
+for classification:
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://leightonzhang.files.wordpress.com/2016/09/classification.png")
+```
+[image source](https://leightonzhang.files.wordpress.com/2016/09/classification.png)
+
+The regions are 
+
+* $R_1 = \{X | \texttt{ wait } < 5, \texttt{ distance } < 100\}$ (Rice)
+* $R_2 = \{X | \texttt{ wait } < 15, \texttt{ distance } > 100\}$ (Steak)
+* $R_3 = \{X | \texttt{ wait } > 5, \texttt{ distance } < 100\}$ (Noodles)
+* $R_4 = \{X | \texttt{ wait } > 15, \texttt{ distance } > 100\}$ (Burger)
+
+And for regression decision trees, they operate 
+by predicting an outcome variable $Y$ by 
+partitioning feature  (predictor) space. So here 
+we will consider another dimension (cost in this case):
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://leightonzhang.files.wordpress.com/2016/09/regression.png")
+```
+[image source](https://leightonzhang.files.wordpress.com/2016/09/regression.png)
+
+The predicted cost for those restaurants is the 
+mean cost for the restaurants in the individual 
+regions. 
+
+## Motivating example 2
+
+Consider the following dataset containing information on 
+572 different Italian olive oils from multiple regions 
+in Italy. 
+
+```{r}
+olives <- read.csv("../data/olives.csv", as.is=TRUE) %>% tbl_df
+names(olives)[1] <- "province"
+region_names <- c("Southern Italy","   Sardinia","Northern Italy")
+olives <- olives %>% mutate(Region=factor(region_names[Region]))
+olives
+```
+
+We are interested in building a classification tree where 
+`Region` is the outcome variable. How many regions are there? 
+
+```{r}
+table(olives$Region)
+```
+
+OK there are three regions. 
+
+Let's just consider  two measured predictors: `linoleic` 
+and `eicosenoic`. Suppose we wanted to predict the olive 
+oil's regionusing these two predictors. What method would you use?
+
+```{r}
+p <- olives %>% 
+  ggplot(aes(eicosenoic, linoleic, fill=Region)) +
+  geom_point(pch=21)
+p
+```
+Note that we can describe a classification algorithm
+using only these two predictors that would work 
+pretty much perfectly:
+
+```{r}
+p <- p + geom_vline(xintercept = 6.5) + 
+  geom_segment(x= -2, y = 1053.5, xend = 6.5, yend = 1053.5)
+p
+```
+
+The prediction algorithm inferred from the figure 
+above is is what we call a _decision tree_. If `eicosnoic`
+is larger than 6.5, predict Southern Italy. If not, then 
+if `linoleic` is larger than $1053.5$ predict Sardinia 
+and Norther Italy otherwise. 
+
+We can draw this decision tree like this:
+
+```{r, echo=FALSE}
+fit <- rpart(as.factor(Region)~., 
+             data = select(olives, Region, linoleic, eicosenoic))
+plot(fit)
+text(fit, cex = 0.5)
+```
+
+In the figure above we used the `rpart()` function in the 
+`rpart` R package which stands for ``Recursive 
+Partitioning and Regression Trees''. We'll learn
+more about what that means in a bit. 
+
+## Regression Trees
+
+Let's start with case of a continuous outcome. 
+The general idea here is to build a decision 
+tree and at end of each _node_ we will have 
+a different prediction $\hat{Y}$ for the 
+outcome $Y$.
+
+The regression tree model does the following:
+
+1. Divide the predictor space (that is the possible values for $X_1$, $X_2$, ... $X_p$) into $J$ distinct and non-overlapping regions, $R_1, R_2, \ldots, R_J$.
+2. For every observation that falls within region $R_j$, we make the same predition, which is simply the mean of the response values for training observations in $R_j$.
+
+### How to construct regions? 
+
+In theory, the regions could have any shape. However,
+we choose to divide the predictor space into high-dimensional 
+rectangles, or boxes, for simplicity and for ease of 
+interpretation of the resulting predic- tive model. 
+The goal is to find boxes $R_1$, ... , $R_J$ that minimize: 
+
+$$ \sum_{j=1}^J \sum_{i \in R_j} (y_i - \hat{y}_{R_j})^2 $$ 
+where $\hat{y}_{R_j}$ is the mean response for the training 
+observations within the $j^{th}$ box. 
+
+This is a very computationally intenseive because we have
+to consider every possible partition of the feature space
+into $J$ boxes. 
+
+Intead we do a _top-down, greedy_ approach known as 
+_recursive binary splitting_. The ``top-down'' approach
+successively splits the predictor space and the ``greedy'' 
+approach mean at each step it looks for the _best_ split 
+made at a particular step, rather than looking ahead and 
+picking a split that will lead to a better tree in some 
+future step. 
+
+For example, consider finding a good predictor 
+$j$ to partition space its axis. A recursive 
+algorithm would look like this:
+
+1. First select the predictor $X_j$ and cutpoint $s$ such that the splitting the predictor space into the regions $R_1(j,s) = \{X | X_j < s\}$ and $R_2(j,s) = \{X | X_j \geq s \}$ leads to the greatest possible reduction in the residual sum of squares (RSS) or minimizes this: 
+
+$$ \sum_{i:\, x_i \in R_1(j,s))} (y_i - \hat{y}_{R_1})^2 +
+   \sum_{i:\, x_i \in R_2(j,s))} (y_i - \hat{y}_{R_2})^2 $$
+
+where $\hat{y}_{R_1}$ and $\hat{y}_{R_2}$ are the mean 
+response for training observations in $R_1(j,s)$ and 
+$R_2(j,s)$. 
+
+Finding values of $j$ and $s$ that minimize the above can be 
+done quickly, especially when the number of features $p$ is
+not too large. 
+
+2. Next, we repeat the process, looking for the best predictor
+and best cutpoint in order to split the data further so as 
+to minimize the RSS within each of the resulting regions. 
+
+However, this time, instead of splitting the entire predictor 
+space, we split one of the two previously identified regions. 
+We now have three regions. Again, we look to split one of 
+these three regions further, so as to minimize the RSS. 
+
+3. The process continues until a stopping criterion is reached; 
+for instance, we may continue until no region contains more 
+than five observations.
+
+
+### Predicting the response 
+
+Once the regions $R_1$,...,$R_J$ have been created, 
+we predict the response for a given test observation using 
+the mean of the training observations in the region to 
+which that test observation belongs.
+
+### Tree pruning 
+
+To avoid overfitting the data (meaning poor test set performance
+because you have a very complex tree), a smaller tree with
+fewer splits (meaning fewer regions) might lead to lower 
+variance and better interpretation (at the cost of slightly 
+more bias). 
+
+A common solution to this is to grow a very large tree 
+$T_0$ and then _prune_ it back to a _subtree_. Given a 
+subtree, we can estiamte its test error using cross-validation. 
+
+Instead of considering every subtree, we use something called 
+_cost complexity pruning_ or _weakest link pruning_ with a
+tuning parameter $\alpha$. 
+You can read more about 
+[Algorithm 8.1](https://www-bcf.usc.edu/~gareth/ISL/ISLR%20First%20Printing.pdf)
+on page 309. 
+
+The idea is that the tuning parameter $\alpha$ 
+controls a trade-off between the subtree’s complexity and 
+its fit to the training data. When $\alpha = 0$, then the 
+subtree $T$ will simply equal the original tree $T_0$ and. 
+
+However, as $\alpha$ increases, there is a price to pay for 
+having a tree with many terminal nodes. Hence branches get
+pruned from the tree in a nested and predictable fashion. 
+
+This idea of controling the complexity is similar to the idea of 
+using the lasso to control the complexity of a linear model.
+
+## Classification trees
+
+A _classification tree_ is very similar to a _regression tree_,
+except that it is used to predict a qualitative response rather 
+than a quantitative one. Recall that for a regression tree, 
+the predicted response for an observation is given by the mean
+response of the training observations that belong to the same 
+terminal node. 
+
+In contrast, for a classification tree, we predict that each 
+observation belongs to the most commonly occurring class of 
+training observations in the region to which it belongs. 
+In interpreting the results of a classification tree, we are
+often interested not only in the class prediction corresponding 
+to a particular terminal node region, but also in the class 
+proportions among the training observations that fall into 
+that region.
+
+We also use recursive binary splitting to grow a classification
+tree, but we cannot use RSS as the criterion for making the binary
+splits. A natural alternative to RSS is the classification 
+error rate. We assign an observation in a given region 
+to the most commonly occurring class of training observations 
+in that region. Then, the classification error rate is simply 
+the fraction of the training observations in that region that 
+do not belong to the most common class:
+
+$$ E = 1 - \max (\hat{p}_{mk}) $$ 
+where $\hat{p}_{mk}$ represents the proportion of training 
+observations in the $m^{th}$ region that are from the $k^{th}$
+class. However, it turns out that classification error is not
+sufficiently sensitive for tree-growing, and in practice 
+two other measures are preferable.
+
+1. The Gini index is defined by 
+
+$$ G = \sum_{k=1}^K \hat{p}_{mk} * (1 - \hat{p}_{mk} ) $$ 
+
+and is a measure of total variance across the $K$ classes. 
+It is not hard to see that the Gini index takes on a small
+value if all of the $\hat{p}_{mk}$s are close to zero or one.
+For this reason the Gini index is referred to as a measure
+of node _purity_ (a small value indicates that a node contains 
+predominantly observations from a single class).
+
+2. An alternative to the Gini index is cross-entropy, given by
+
+$$ D = - \sum_{k=1}^K \hat{p}_{mk} \log (\hat{p}_{mk} ) $$ 
+Like the Gini index, the cross-entropy will take 
+on a small value if the $m^{th}$ node is pure. In fact, it 
+turns out that the Gini index and the cross-entropy 
+are quite similar numerically.
+
+When building a classification tree, either the Gini 
+index or the cross- entropy are typically used to evaluate
+the quality of a particular split, since these two 
+approaches are more sensitive to node purity than is
+the classification error rate. Any of these three 
+approaches might be used when pruning the tree, but the 
+classification error rate is preferable if prediction 
+accuracy of the final pruned tree is the goal.
+
+Here we will use the `train()` function with the 
+`method = "rpart"` argument from the `caret` package. 
+
+```{r}
+modelfit <- train(Region ~ ., method = "rpart", 
+                  data = select(olives, -province, -Area))
+newdata <- as.data.frame(select(olives, -province, -Area, -Region))
+pred_rpart <- predict(modelfit, newdata)
+table(pred_rpart, olives$Region)
+```
+
+## Summary
+
+Why use decision trees? 
+
+Decision trees for regression and classification have 
+a number of advantages over the more classical 
+classification approaches.
+
+#### Advantages 
+
+1. Trees are very easy to explain to people. In fact, they are even easier to explain than linear regression!
+2. Some people believe that decision trees more closely mirror human decision-making than do the regression and classification approaches seen in previous chapters.
+3. Trees can be displayed graphically, and are easily interpreted even by a non-expert (especially if they are small).
+4. Trees can easily handle qualitative predictors without the need to create dummy variables.
+
+#### Disadvantages
+
+1. Trees generally do not have the same level of predictive accuracy as some of the other regression and classification approaches .
+
+However, by aggregating many decision trees, using 
+methods like _bagging_, _random forests_, and _boosting_, 
+the predictive performance of trees can be substantially 
+improved. We introduce these concepts next.
+
+# Bagging 
+
+Bootstrap aggregation (or _bagging_) is a general-purpose 
+technique used to improve the variance of a statistical 
+learning method. Here, we will use it to improve the 
+performance of decision trees, which suffers from 
+high variance. Meaning if we split the training data into
+two parts at random, and fit a decision tree to both halves, 
+the results that we get could be quite different.
+
+In general, to reduce the variance, one approach is to take
+many training sets from the population, build a separate 
+prediction model (e.g. a decision tree) using each training set, 
+and _average_ the resulting predictions (e.g. majority vote). 
+In other words, we could calculate $\hat{f}^{1}(x)$, $\hat{f}^2(x)$,
+..., $\hat{f}^B(x)$ using $B$ separate training sets, and
+average them in order to obtain a single low-variance
+statistical learning model, given by
+
+$$ \hat{f}_{avg}(x) = \frac{1}{B} \sum_{b=1}^B \hat{f}^b(x) $$
+
+Of course, this is not practical because we generally do not 
+have access to multiple training sets. 
+
+The key idea here is to use _boostrap samples_ from the (single)
+training data set. We generate $B$ different bootstrapped 
+training datasets, train our method on the $b^{th}$ bootstrapped 
+training set in order to get $\hat{f}^{∗b}(x)$, and finally 
+average all the predictions, to obtain
+
+$$ \hat{f}_{bag}(x) = \frac{1}{B} \sum_{b=1}^B \hat{f}^{*b}(x) $$
+
+This is called _bagging_. 
+
+## Regression trees 
+
+To apply bagging to regression trees with a 
+quantitative outcome $Y$ : 
+
+1. Construct $B$ trees using $B$ bootstrapped training sets (trees should be deep and not pruned)
+2. Average the resulting predictions 
+
+Hence each individual tree has high variance, but low bias. 
+Averaging these $B$ trees reduces the variance. 
+
+Bagging has been demonstrated to give impressive improvements 
+in accuracy by combining together hundreds or even thousands 
+of trees into a single procedure.
+
+
+## Classification trees 
+
+To apply bagging to classification trees with a 
+qualitative outcome $Y$: 
+
+Bagging be extended to a classification problem using 
+a few possible approaches, but the simplest is as follows. 
+
+1. For a given test observation, we can record the class 
+predicted by each of the $B$ trees
+2. Average the resulting predictions by taking a majority vote (the overall prediction is the most commonly occurring class among the B predictions)
+
+The number of trees $B$ is not a critical parameter with bagging. 
+Using a very large value of $B$ will not lead to overfitting. 
+In practice we use a value of $B$ sufficiently large that the 
+error has settled down. Using $B = 100$ is a good starting place. 
+
+We set up the parameters using the `trainControl()` function 
+in the `caret` package. We ask for `number=10` folds in our 
+cross validation and ask to repeat that three times (`repeat=3`). 
+
+```{r}
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+seed <- 123
+metric <- "Accuracy"
+```
+
+Next, we will use the `train()` function with the 
+`method = "treebag"` argument from the `caret` package. 
+
+**Note**: How did I know what method to pick? 
+
+Use help file `?train` or 
+[look on caret page](http://topepo.github.io/caret/train-models-by-tag.html)
+or use this: 
+
+```{r}
+names(getModelInfo())
+```
+
+
+```{r}
+fit_treebag <- train(Region~., data=select(olives, -province, -Area),
+                     method="treebag", metric=metric, trControl=control)
+
+newdata <- as.data.frame(select(olives, -province, -Area, -Region))
+pred_treebag <- predict(fit_treebag, newdata)
+table(pred_treebag, olives$Region)
+```
+
+
+## Variable Importance Measures
+
+Bagging typically results in improved accuracy over prediction
+using a single tree. Unfortunately, however, it can be difficult
+to interpret the resulting model. Recall that one of the advantages 
+of decision trees is the attractive and easily interpreted 
+diagram that results. However, when we bag a large number of
+trees, it is no longer possible to represent the resulting 
+statistical learning procedure using a single tree, and 
+it is no longer clear which variables are most important 
+to the procedure. Thus, bagging improves prediction accuracy 
+at the expense of interpretability.
+
+Although the collection of bagged trees is much more difficult
+to interpret than a single tree, one can obtain an overall 
+summary of the importance of each predictor using the RSS 
+(for bagging regression trees) or the Gini index (for 
+bagging classification trees). 
+
+In the case of bagging regression trees, we can record the total 
+amount that the RSS is decreased due to splits over a 
+given predictor, averaged over all $B$ trees. A large value
+indicates an important predictor. Similarly, in the context 
+of bagging classification trees, we can add up the total 
+amount that the Gini index is decreased by splits over a 
+given predictor, averaged over all $B$ trees.
+
+
+These are known as _variable importances_. 
+
+For example, consider a set of predictors:
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://topepo.github.io/caret/varimp/varImp_gbm_plot-1.svg")
+```
+
+The x-axis is "Importance of predictors" calculated as 
+e.g.  total amount that the RSS is decreased due to splits over a 
+given predictor, averaged over all $B$ trees. 
+
+You can read about them in [Chapter 15](https://topepo.github.io/caret/variable-importance.html)
+and see an example. 
+
+# Random Forests
+
+Random forests provide an improvement over bagged trees 
+by way of a small tweak that _decorrelates_ the trees. 
+As in bagging, we build a number of decision trees on 
+bootstrapped training samples. But when building these 
+decision trees, each time a split in a tree is considered,
+a random sample of $m$ predictors is chosen as split
+candidates from the full set of $p$ predictors. The split 
+is allowed to use only one of those $m$ predictors. 
+
+A fresh sample of $m$ predictors is taken at each split, 
+and typically we choose $m \approx \sqrt{p}$, that is, 
+the number of predictors considered at each split is 
+approximately equal to the square root of the total number
+of predictors.
+
+In other words, in building a random forest, at each
+split in the tree, the algorithm is not even allowed to 
+consider a majority of the available predictors. This may 
+sound crazy, but it has a clever rationale. Suppose that 
+there is **one very strong predictor** in the data set, 
+along with a number of other moderately strong predictors. 
+Then in the collection of bagged trees, most or all of the
+trees will use this strong predictor in the top split. 
+Consequently, all of the bagged trees will look quite similar 
+to each other. Hence the predictions from the bagged trees 
+will be highly correlated. 
+
+Unfortunately, averaging many highly correlated quantities
+does not lead to as large of a reduction in variance as 
+averaging many uncorrelated quantities. In particular, 
+this means that bagging will not lead to a substantial 
+reduction in variance over a single tree in this setting.
+
+Random forests overcome this problem by forcing each split 
+to consider only a subset of the predictors. Therefore, on 
+average $(p − m)/p$ of the splits will not even consider 
+the strong predictor, and so other predictors will have 
+more of a chance. We can think of this process as decorrelating
+the trees, thereby making the average of the resulting 
+trees less variable and hence more reliable.
+
+Here we will use the `train()` function with the 
+`method = "rf"` argument from the `caret` package. 
+
+```{r}
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+seed <- 123
+metric <- "Accuracy"
+
+fit_rf <- train(Region~., data=select(olives, -province, -Area),
+                 method="rf", metric=metric, trControl=control)
+
+newdata <- as.data.frame(select(olives, -province, -Area, -Region))
+pred_rf<- predict(fit_rf, newdata)
+table(pred_rf, olives$Region)
+```
+
+
+```{r}
+# summarize results
+bagging_results <- resamples(list(treebag=fit_treebag, rf=fit_rf))
+summary(bagging_results)
+```
+
+```{r}
+dotplot(bagging_results)
+```
+
+
+
+
+
+## Relationship between bagging and random forests
+
+If a random forest is built using $m = p$, then this amounts
+simply to bagging. 
+
+# Boosting 
+
+_Boosting_ is another approach for improving the predictions 
+resulting from a decision tree. Instead of _bagging_ (or building 
+a tree on a bootstrap data set, independent of the other trees), 
+boosting grows the trees sequentially: each tree is grown using 
+information from previously grown trees. Boosting does not 
+involve bootstrap sampling; instead each tree is fit on a modified
+version of the original data set.
+
+To read about the algorithmic details of boosting, check out
+[Algorithm 8.2: Boosting for Regression Trees](https://www-bcf.usc.edu/~gareth/ISL/ISLR%20First%20Printing.pdf). 
+
+We won't go into the details, but this is the main idea: 
+
+Unlike fitting a single large decision tree to the data, 
+which amounts to fitting the data hard and potentially
+overfitting, the boosting approach instead learns slowly. 
+
+Given the current model, we fit a decision tree to the 
+residuals from the model. That is, we fit a tree using 
+the current residuals, rather than the outcome $Y$, as the 
+response. We then add this new decision tree into the fitted 
+function in order to update the residuals. 
+
+The idea is we are slowly improve $\hat{f}$ in areas where 
+it does not perform well. In general, statistical learning 
+approaches that learn slowly tend to perform well. 
+Note that in boosting, unlike in bagging, the construction 
+of each tree depends strongly on the trees that have already been grown.
+
+Here we use the `method=gbm` argument for the which uses the 
+[gbm](https://cran.r-project.org/web/packages/gbm/index.html) R 
+package for Generalized Boosted Regression Models
+
+```{r, message=FALSE, warning=FALSE}
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+seed <- 123
+metric <- "Accuracy"
+
+fit_boost <- train(Region~., data=select(olives, -province, -Area),
+                 method="gbm", metric=metric, trControl=control)
+
+newdata <- as.data.frame(select(olives, -province, -Area, -Region))
+pred_boost <- predict(fit_boost, newdata)
+table(pred_boost, olives$Region)
+```
+
+
+```{r}
+# summarize results
+bagging_results <- resamples(list(treebag=fit_treebag, rf=fit_rf, fit_boost))
+summary(bagging_results)
+```
+
+```{r}
+dotplot(bagging_results)
+```
+
+For more information on the [caret](http://topepo.github.io/caret/index.html)
+package, you can read through the nice documention to see what other
+algorithms are available for decision trees. 
