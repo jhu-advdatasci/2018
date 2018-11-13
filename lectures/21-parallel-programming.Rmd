@@ -1,0 +1,457 @@
+---
+title: "Parallel Programming with Futures" 
+date: Nov 7, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA)
+```
+
+
+# Introduction
+
+With datasets today problems can easily get very large and computationally complex. However, sometimes we can take advantage of the independence structure of a problem to divide the problem into smaller pieces. In such cases we can use *parallel programming* in R increase the efficiency with which we fit models and compute results. 
+
+With parallel programming, we solve a problem in three steps:
+
+1. Divide the problem in to separate *independent* pieces
+
+2. Run our algorithm on each independent piece in parallel
+
+3. Assemble the results
+
+While parallel programming was once considered squarely in the domain of "high performance computing", almost all modern computers have multiple processors. Therefore, almost anyone can take advantage of parallelism in a problem and engage in parallel programming. 
+
+One way you can check to see if your computer has multiple processors (can hence, can do parallel programming) is by calling the `detectCores()` function in the `parallel` package:
+
+```{r}
+parallel::detectCores()
+```
+
+If `detectCores()` returns a number greater than 1 then you are ready for parallel programming!
+
+
+## Motivating Problem
+
+When conducting national-level time series studies of air pollution and health, it is often possible to collect many years of data for many locations across the United States. However, analyzing all of those data at once, in a single large model, can still be a challenge, even with today's computers. If anything, it may be difficult to read all of that data into R, which has to store everything in the physical RAM of your computer. One strategy for circumventing these limitations is to divide the problem into separate "independent" components and the analyze each component separately.
+
+For air pollution studies, we often treat separate cities as independent and fit so-called "city-specific models". With these models, we can estimate the risk of air pollution for each city and then combine them together to get an overall national average risk estimate. Hence, the procedure is a two stage model:
+
+1. Fit a separate city-specific model to data from each city (this can be done in parallel)
+
+2. Combine the risk estimates together to get a national average risk estimate using hierachical models
+
+# Data
+
+The data come from the National Morbidity, Mortality, and Air Pollution Study (NMMAPS), which originated at Johns Hopkins University as one of the first national-level studies of air pollution and health in the United States. The orignal study contains data on 108 urban communities, however for the purposes of demonstrating parallel programming methods in this lecture, we will focus on just four cities: New York City, Denver, Los Angeles, and Chicago.
+
+For each dataset, we will focus on the following variables:
+
+* `death`: the number of deaths from all non-accidental causes
+
+* `pm10tmean`: the level of PM10, after removing an overall mean
+
+* `tmpd`: the average temperature (an important confounder)
+
+* `date`: the date of the observation
+
+
+We can load the data with the `readr` package in the tidyverse.
+
+```{r}
+library(tidyverse)  ## Loads the `readr` package (and others)
+dat <- read_csv("data/nmmaps/denv.csv", col_types = "Didd")
+```
+
+The first few rows of the data look as follows.
+```{r}
+dat
+```
+
+The mortality data look something like this.
+
+```{r,warning=FALSE}
+library(ggplot2)
+ggplot(dat, aes(date, death)) + 
+        geom_point() + 
+        xlab("Date") + 
+        ylab("Mortality") + 
+        ggtitle("Daily Mortality in Denver") + 
+        theme_bw()
+```
+
+
+The pollution data look like this.
+
+```{r,warning=FALSE}
+ggplot(dat, aes(date, pm10tmean)) + 
+        geom_point() + 
+        xlab("Date") + 
+        ylab("Mortality") + 
+        ggtitle(expression(PM[10] * " in Denver")) + 
+        theme_bw()
+```
+
+For the purposes of the data analysis in this lecture, we are interested in the association between PM10 and mortality, adjusted for two key confounders: temperature and smoothly varying seasonal factors. Temperature is directly measured but seasonal factors will be represented in the model using natural splines of time. Typically in the literature, we use between 6 and 10 degrees of freedom per year of data. The data here range from January 1, 1987 to December 31, 2005, which is a 19 year span. Therefore, our spline will use $8\times 19$ degrees of freedom (in the middle of the range). For simplicity here, we will use a linear model for the city-specific model.
+
+The fitted model for the above data looks as follows.
+
+```{r}
+library(splines)
+time <- system.time({
+        fit <- glm(death ~ ns(tmpd, 3) + ns(date, 8 * 19) + pm10tmean,
+                  data = dat, family = poisson)
+})
+print(time)
+```
+
+The coefficients and the standard errors are
+
+```{r}
+summary(fit)
+```
+
+The number that we care about is the coefficient (and standard error) corresponding to `pm10tmean`, which is the log-relative risk of mortality associated with PM10, adjusting for everything else in the model. 
+
+In a multi-city study, we would fit this model to every city in the study and combine the results in some way (more on that later).
+
+
+
+# Parallelizing Your Problem
+
+How can we parallelize the problem of multi-city time series modeling of air pollution and mortality? In a way, we have already done it by fitting a separate model for a given city. What we are saying there is that *each city is independent of the others*. Therefore, we can fit a model to each city in parallel.
+
+The fundamental requirements for parallelizing your problem are
+
+* Identifying the independent components of a problem
+
+* Writing R code for executing the independent components that can be evaluated without reference to the other components
+
+
+
+
+# Parallel Programming You're Already Doing
+
+
+Many software packages are linked with computational libraries that operate in parallel
+
+* R uses BLAS for linear algebra computation, which may use a  parallel implementation
+
+* Mac: Accelerate Framework
+
+* Other: ACML, Intel MKL
+
+* Automatically Tuned Linear Algebra Software (ATLAS)
+
+(You may need to compile R from sources to use these libraries.)
+
+Using parallel linear algebra libraries means that you can do eigenvalue decompositions in parallel.
+
+```{r}
+X <- matrix(rnorm(1000 * 1000), 1000, 1000)
+system.time({
+        eigen(crossprod(X))
+})
+```
+
+However, aside from niche matrix calculations and decompositions, there's no way to take advantage of parallel programming in this manner more generally.
+
+# Embarrassingly Parallel Programming
+
+What can we parallelize?
+
+* Any process/job that can be split into multiple **independent** pieces may be paralleized
+
+* Each of the pieces should be roughly similar in size/difficulty (evenly split)
+
+* The bootstrap! Each bootstrap resample is independent of the other
+
+* "Embarrassingly parallel" computing
+
+
+Think of how the `lapply()` function works. The `lapply()` function requires
+
+1. A list, or an object that can be easily coerced to a list.
+
+2. A function to be applied to each element of the list
+
+3. `lapply()` applies that function to each element of the list
+
+Finally, recall that `lapply()` always returns a list whose length is equal to the length of the input list. 
+
+The `lapply()` function works much like a loop--it cycles through each element of the list and applies the supplied function to that element. While `lapply()` is applying your function to a list element, the other elements of the list are just...sitting around in memory. Furthermore, the order in which elements are processed is not important AND the function being applied to a given list element does not need to know about other list elements. 
+
+Bottom line:
+
+> Almost any operation that can be done with `lapply()` can be parallelized.
+
+# Parallel Implementations
+
+For R, there are two basic parallel programming implementations:
+
+* **Multi-core**: This approach relies on individual machines having multiple cores for parallel execution (essentially all computers today). However, it relies on specific features of the operating system (a forking mechanism) that only exist on Mac OS X and Unix/Linux (as of today).
+
+* **Multi-process**: This approach spawns a separate R process for each parallel job and should work on all systems. It is a more general approach and its only downside is that it can incur more overhead than the multi-core method. If you have many short tasks, then it might be slower than just going it sequentially. However, if you have many long tasks, then the additional overhead will be minimal.
+
+A big downside of parallel programming in R (and on most systems) is that you have to know a lot of the underlying details of a system in order to do it properly. In addition, you have write your code differently depending on whether you're on Windwos or a Mac, or if you single core or multi-core.
+
+
+# Futures: A Unified Framework
+
+The `future` package is written by Henrik Bengtsson and others and attempts to provide a unified framework for parallel programming in R that does not require you to know too many underlying system specifics and does not require that you write code differently. It is under active development but shows quite a bit a promise with respect to simplifying the parallel programming task.
+
+The outline of what you need to do with the `future` package is as follows:
+
+1. Divide your problem into independent components (as you would for any parallel programming task). For example, if you can write your code using `lapply()` then you are probably set.
+
+2. Wrap each independent component in a call to the `future()` function.
+
+3. Evaluate the futures.
+
+4. Assemble the results.
+
+
+## Explicit Futures
+
+Futures can be created with the `future()` function. The idea here is that you are creating a task to evaluated in "the future". The first task is to set the *plan*.
+
+```{r}
+library(future)
+plan(sequential)
+```
+
+The default plan is `sequential` which just runs all tasks in sequence (the usual R behavior). Let's stay with this plan to see how the whole process plays out.
+
+Now we can create a future containing our linear model. You can put any R expression inside a future.
+
+```{r}
+fit.f <- future({
+        glm(death ~ ns(tmpd, 3) + ns(date, 8 * 19) + pm10tmean,
+           data = dat, family = poisson)
+})
+```
+
+We can take a look at what a future looks like.
+
+```{r}
+print(fit.f)
+```
+
+Now we can evaluate the future to get its result.
+
+```{r}
+fit <- value(fit.f)
+
+library(dplyr)
+library(broom)
+tidy(fit) %>%
+        filter(term == "pm10tmean")
+```
+
+Doing that sequence of operations only involves changing the *plan* with the `plan` function. 
+
+
+
+## Parallelize It!
+
+Now let's parallelize the fitting of this model to all four cities. First we can check the current plan.
+
+```{r}
+plan()
+```
+
+Now we can set a new plan.
+
+```{r}
+plan(multisession)
+```
+
+Then we can create the futures. One way to think of this is that you should create a separate future for each independent component of your task.
+
+```{r}
+cities <- c("ny", "la", "denv", "chic")
+results.f <- lapply(cities, function(city) {
+        future({
+                dat <- read_csv(sprintf("data/nmmaps/%s.csv", city))
+                glm(death ~ ns(tmpd, 3) + ns(date, 8 * 19) + pm10tmean,
+                    data = dat, family = poisson)
+        })
+})
+```
+
+At this point we only have a list of futures in the `results.f` object. We can evaluate those futures in parallel in a multi-session implementation.
+
+```{r}
+results <- lapply(results.f, value)
+```
+
+Now we can combine the results of each model, which is the `pm10tmean` coefficient and standard error.
+
+```{r}
+coefs <- lapply(results, tidy) %>%
+        bind_rows() %>%
+        filter(term == "pm10tmean") %>%
+        select(estimate, std.error) %>%
+        mutate(t.stat = estimate / std.error,
+               city = cities)
+coefs
+```
+
+We could then take an inverse variance weighted average to get an overall effect for the four cities.
+
+```{r}
+overall <- with(coefs, weighted.mean(estimate, 1 / std.error^2))
+overall
+```
+
+This can be interpreted as a `r round(100*(exp(10*overall)-1), 2)`% change in mortality associated with a 10 unit increase in PM10. While this risk appears small, it's important to bear in mind that it is applied to a combined population of about 30 million across the four cities.
+
+
+## Implicit Futures
+
+The `%<-%` can be used to assign futures implicitly. The operator serves as kind of a combination between the `future()` function and the `value()` function.
+
+```{r}
+plan(multisession)
+dat %<-% read_csv("data/nmmaps/denv.csv", col_types = "Didd")
+```
+
+At this point, the expression has not been evaluated yet, but it will be when `dat` is needed. We can create more futures this way too.
+
+```{r}
+fit %<-% glm(death ~ ns(tmpd, 3) + ns(date, 8 * 19) + pm10tmean,
+             data = dat, family = poisson)
+```
+
+Since the `glm()` function needs the `dat` object, the `dat` future will be evaluated and fed into the `glm()` function. Note that there's no need to use the `value()` function to get the value of the future.
+
+```{r}
+results %<-% tidy(fit)
+print(results)
+```
+
+Under `plan(sequential)` this code would run as if you had just used `<-` for assignment. However, under a parallel plan, the code would get executed in the cluster.
+
+
+## Remote Futures
+
+Futures can also be evaluated on remote servers, assuming such servers 
+
+* Have R installed (along with any needed packages)
+
+* Are accessible via ssh configured with password-less login
+
+We have setup a server on the Digital Ocean cloud service that has R installed. We can register it with the `plan()` function using the `remote` strategy.
+
+```{r}
+## This requires 'ssh' to run
+plan(remote, workers = "rdpeng@68.183.62.161")
+host %<-% Sys.info()
+print(host)
+remote.R %<-% R.version.string
+print(remote.R)
+```
+
+We can now run our multi-city model code on a remote server.
+
+```{r}
+cities <- c("ny", "la", "denv", "chic")
+
+## This entire 'lapply()' will occur on the remote server
+results %<-% lapply(cities, function(city) {
+        dat <- read_csv(sprintf("data/nmmaps/%s.csv", city))
+        fit <- glm(death ~ ns(tmpd, 3) + ns(date, 8 * 19) + pm10tmean,
+            data = dat, family = poisson)
+        tidy(fit)
+})
+```
+
+And filter out the results.
+
+```{r}
+bind_rows(results) %>%
+        filter(term == "pm10tmean")
+```
+
+What if we wanted to run the job in parallel on the remote server? We need to set two plans now: One for where to evaluate the top level `lapply()` and one for where to evaluate each iteration.
+
+
+```{r}
+plan(list(tweak(remote, workers = "rdpeng@68.183.62.161"),
+          tweak(multiprocess, workers = 2L)))
+```
+
+Here, the top-level `lapply()` will be executed on the cloud server. The second-level jobs will be executed in a multiprocess session. We only need to re-write our code slightly inside the `lapply()` anonymous function.
+
+```{r}
+cities <- c("ny", "la", "denv", "chic")
+
+## This will be run on the remote server
+results %<-% lapply(cities, function(city) {
+        ## This will be run on the remote server in 2 parallel processes
+        result %<-% {
+                dat <- read_csv(sprintf("data/nmmaps/%s.csv", city))
+                fit <- glm(death ~ ns(tmpd, 3) + ns(date, 8 * 19) + pm10tmean,
+                           data = dat, family = poisson)
+                tidy(fit)
+        }
+        result
+})
+```
+
+So far nothing has been executed yet because we haven't needed the `results` object yet. But now we will need it.
+
+
+```{r}
+## This should take a few seconds as it has to go over the network
+bind_rows(results) %>%
+        filter(term == "pm10tmean")
+```
+
+
+# Summary
+
+Parallel programming in R requires that you 
+
+1. Break a problem into multiple independent components
+
+2. Evaluate each independent component in parallel
+
+3. Assemble/Combine all of the results
+
+The `future` package provides a parallel programming framework that allows you to choose different execution "plans" that are independent of the code that you write. The process is
+
+1. Wrap each independent expression in a call to the `future()` function.
+
+2. Evaluate the futures "in the future", which may be done in parallel or in sequence.
+
+3. Gather/Combine the results.
+
+We can also use implicit futures to simplify the coding a bit with the `%<-%` operator. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
