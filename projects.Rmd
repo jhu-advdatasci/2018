@@ -1,5 +1,5 @@
 ---
-title: Final Projects
+title: "Final Projects"
 ---
 
 For your final assignment in 140.712.01 Advanced Data Science II, you will work on a month-long data science project. The goal of the project is to go through the complete data science process to answer questions you have about some topic of your own choosing. You will acquire the data, design your visualizations, run statistical analysis, and communicate the results.
@@ -87,13 +87,36 @@ Each individual team member needs to fill out this [google form for the peer eva
 
 
 ## Grading
-The final project will be graded in three amin parts: 
+The final project will be graded in three main parts: 
 
 1. **Project proposal and team meeting** (10%). This portion represents the Team Registration, Final Project Proposal and meeting with your assigned TA or Instructor.
 2. **Data Analysis** (50%). This portion will be based on your RMarkdown and HTML files in your GitHub repository. This includes the quality of your data analysis and R code, the complexity and level of difficulty of your project, completeness and overall functionality of your analysis.
 3. **Website** (20%), **Youtube video** (10%) and **Final Project Presentation** (10%). This portion will based on the quality of your storytelling and summarization aspects. 
 
 Your individual project score will also be modified by your peer evaluations.
+
+### Notes on Grading Criteria
+
+The course instructors will be grading the final projects based on the submitted materials described above. As part of the grading, the following factors will be taken into consideration.
+
+* **Question**. Your project should address a clearly specified question that is presented early on. The crafting of your question should reflect careful consideration of how the results of your analysis (and hence the answers to your question) may result in further actions or decision-making. A highly specific question may lead to logical next steps but may also be difficult to generalize. A more vague question may be quite general but may simply lead to more questions. A balance must be struck in building your data analysis.
+
+* **Audience**. You should describe the audience at which your analysis/presentation is aimed or targeted. Who do you imagine would (or should) be most interested in your analysis? You should also describe how this audience might make use of the information and analyses you are presenting.
+
+* **Technical Level**. Given the audience that you've selected, the technical level of detail in your presentation should be appropriately matched to the audience's background.
+
+* **Narrative**. Your project presentation--in the video, R markdown, and oral presentation--should build a coherent narrative that tells a story that is supported by the data analysis. You should not be presenting R output that is stitched together with a few sentences.
+
+* **Code Quality**. The code in the R markdown docoument should be well-written and clear in terms of what it is intended to do. The code should also be reproducible by others.
+
+* **Statistical Methodology**. Throughout the analysis, proper statistical methodology should be used. In addition, some rationale should be given that describes how or why certain methods were chosen over others. If for example, a project involves feature selection/engineering, then you should describe the rationale for choosing some features over others. In a cluster analysis, you should describe why a certain number of clusters was chosen, etc.
+
+* **Lessons Learned**. You should try to communicate any lessons learned through your analysis. These lessons should be as general as possible and should be something that may be useful in future analyses. Not every analysis will produce profound insights, but there should still be something that we learn from the data. The communication of any lessons learned should be distinct from the description of what was done.
+
+* **Exploratory Analysis**. Throughout the analysis, there should be exploration of the data and of the possible methods that can be applied to the data. In addition, there should be a selection process amongst the many possibilities generated during exploration that allows you focus on one or a few paths forward. You should describe the rationale for making these choices on what to focus on.
+
+
+
 
 ## Example Final Projects
 
