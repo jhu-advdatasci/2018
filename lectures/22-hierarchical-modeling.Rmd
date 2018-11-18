@@ -1,0 +1,329 @@
+---
+title: "Bayesian Hierarchical Modeling with greta" 
+date: Nov 19, 2018
+output: 
+    html_document:
+        theme: cosmo 
+        toc: true
+        toc_float: true
+        highlight: tango
+        number_sections: false
+fig_width: 5
+fig_height: 5
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA)
+```
+
+
+# Introduction
+
+Hierarchical modeling is often useful because data are organized as hierarchies or in multiple levels of aggregation. However, such models are typically complex to implement and analyze because of their complexity and possibly because of the lack of sufficient data. Traditionally, statistical software had to be written from scratch to fit hierarchical models (especially if Bayesien inference was employed), which made it difficult to substantial exploratory work with these models. 
+
+Recently, a number of software packages have emerged that allow one to automate many of the difficult aspects of Bayesian hierarchical modeling. In particular, the specification and implementation of Markov chain Monte Carlo samplers has been automated to the point where we do not have to spend copious amounts of time implementing conditional distributions of Gibbs samplers. This lecture will explore one such package, `greta`, for doing these computations.
+
+
+# Motivating Example
+
+We will return to the analysis of PM10 and mortality data and examine data from 20 large cities in the United States. For data pertaining to a single city, a typical time series regression model will look as follows. We use a Poisson regression to model the count outcome (daily numbers of deaths) and use a log-linear predictor containing splines of temperature (`tmpd`), date, and PM10.
+
+
+```{r singlecity,message=FALSE}
+library(splines)
+library(dplyr)
+library(broom)
+
+dat <- readRDS("data/nmmaps/ny.rds") %>%
+        select(death, tmpd, date, pm10tmean)
+
+fit <- glm(death ~ ns(tmpd, 3) + ns(date, 8 * 19) + pm10tmean,
+           data = dat, family = stats::poisson)
+tidy(fit) %>%
+        filter(term == "pm10tmean")
+```
+
+```{r,include=FALSE}
+b <- tidy(fit) %>%
+        filter(term == "pm10tmean")
+```
+
+The coefficient for `pm10tmean` is the primary target of interest. Here we would interpret it as a `r round((exp(b$estimate*10)-1)*100, 2)`% increase in mortality for a 10 unit increase in PM10.
+
+With data from 20 cities, we can fit this same model independently to each city's data and get a sense of what the coefficients for PM10 look like (the log-relative risks).
+
+```{r multicity, cache=TRUE}
+infiles <- dir("data/nmmaps", glob2rx("*.rds"), full.names = TRUE)
+fit.f <- lapply(infiles, function(file) {
+        dat <- readRDS(file)
+        glm(death ~ ns(tmpd, 3) + ns(date, 8 * 19) + pm10tmean, 
+            data = dat, family = stats::poisson)
+})
+names(fit.f) <- sub(".rds", "", basename(infiles), fixed = TRUE)
+results <- lapply(fit.f, tidy) %>%
+        bind_rows(.id = "city") %>%
+        filter(term == "pm10tmean")
+```
+
+
+The results are shown here for each city.
+
+```{r}
+results
+```
+
+
+Our primary goal here is to combine the log-relative risk estimates to obtain a single "overall" risk estimate that summarizes the data from all 20 cities. To do this, we will take a two-stage approach where we first compute risk estimates for each city independently and then combine them in a second stage using a Normal hierarchical model.
+
+But first, the `greta` package.
+
+# Using the `greta` Package
+
+The `greta` package is written by Nick Golding and serves as a package for fitting complex (often Bayesian hierarchical) models in R. It is similar in spirit to WinBUGS or JAGS, and more recently Stan, but it has a number of high-level and low-level differences:
+
+* Its syntax is R based, unlike Stan and WinBUGS which create their own model specification language.
+
+* Underlying implementation is done using Google TensorFlow, which allows for users to immediately take advantage of TensorFlow capabilities should they be available (GPU/TPU computation, parallelization).
+
+
+## Single-city GLM with `greta`
+
+As an example of how to use the `greta` package we will start by fitting a Bayesian version of the single-city model that we fit to the New York City data above. Here, we will use the same log-linear Poisson model, but will add prior distributions to the regression model parameters. 
+
+First we can load the `greta` package and read in the data for New York City.
+
+```{r loadgreta,message=FALSE}
+library(greta)
+
+dat <- readRDS("data/nmmaps/ny.rds") %>%
+        select(death, tmpd, date, pm10tmean)
+```
+
+
+Then we need to create the model matrix (design matrix) and the outcome vector. To do this we use the same model formula that was used in the GLM in the previous section.
+
+```{r}
+mm <- model.matrix(death ~ ns(tmpd, 3) + ns(date, 8 * 19) + pm10tmean,
+                   data = dat)
+y <- dat$death[!is.na(dat$pm10tmean)]
+```
+
+
+Now that we have the data, we need to specify the parameters. For this model, the parameters are a vector of coefficients for the regression model. For a Bayesian formulation, we need to specify the prior distribution for them. Here we will use a $\mathcal{N}(0, 10^2)$ distribution as the prior (independently) for all the coefficients.
+
+```{r}
+beta <- normal(0, 10, dim = ncol(mm))
+```
+
+We can print out the `beta` object to see what the `greta` package does here.
+
+```{r}
+head(beta)
+```
+
+Essentially, this is a $157\times 1$ array of unknown parameters.
+
+After setting the prior distributions, we need to specify the log-linear predictor for the Poisson model.
+
+
+```{r}
+log.mu <- mm %*% beta
+mu <- exp(log.mu)
+head(mu)
+```
+
+Finally, we can specify the probability distribution for the data `y` as coming from a Poisson distribution.
+
+```{r}
+distribution(y) <- greta::poisson(mu)
+```
+
+Note that we use the full function name `greta::poisson()` here because there are multiple functions named `poisson()` in different packages and we do not want any confusion.
+
+Once all of this is specified we need to create a model object with the `model()` function. Here, we need to pass any arrays containing unknown parameters (i.e. the random elements in a Bayesian formulation). In this example, that is just the vector `beta`. 
+
+```{r}
+mod <- model(beta)
+```
+
+
+Before doing any model fitting, it can be useful to plot a graphical representation of the model to make sure that everything was properly specified.
+
+```{r}
+plot(mod)
+```
+
+
+Once we have confirmed that the model is properly specified, we can fit it using Markov chain Monte Carlo to sample from the posterior distribution of `beta`. 
+
+In this invocation of the `mcmc()` function from `greta`, we specify:
+
+* The model object `mod`
+
+* The sampler should use a Hamiltonian Monte Carlo sampler (the alternative is a random walk Metropolis-Hastings)
+
+* We should draw 1,000 samples from the chain (after a 1,000 iteration warmup period)
+
+* We should only sample a single chain (the default is 4)
+
+The output from `mcmc()` by default gives progress on the warmup and the sampling.
+
+
+```{r mcmcsingle, cache=TRUE}
+r <- greta::mcmc(mod, 
+                 sampler = hmc(), 
+                 n_samples = 1000, 
+                 chains = 1)
+```
+
+The execution of the Hamiltonian Monte Carlo sampler is done through Google TensorFlow which allows us to take advantage of the parallelization built into TensorFlow (primarily for matrix/array computations). On a 2016 MacBook Pro, the sampling process uses 3 processors.
+
+
+The object returned by `greta::mcmc()` can be fed into functions from the `bayesplot` packages. Here we will plot the trace plot of the `pm10tmean` variable (which is the very last, hence 157th, coefficient). 
+
+```{r,message=FALSE}
+library(bayesplot)
+mcmc_trace(r, "beta[157,1]")
+```
+
+We can also compute the posterior mean and standard deviation.
+
+```{r}
+beta.m <- as.matrix(r)
+mean(beta.m[, 157])
+sd(beta.m[, 157])
+```
+
+Note that the posterior mean here is quite a bit bigger than the maximum likelihood estimate shown in the previous section. That said, it's likely that we have not run our sampler for long enough as 1,000 iterations is a very small number of iterations for almost any MCMC sampler.
+
+
+## Normal Approximations
+
+If we want to use a two-stage approach to combine the data from the 20 cities into a single overall risk estimate, we need to check and see if the profile likelihood for the PM10 coefficient in the Poisson model is reaosnably well-approximated with a Normal distribution centered around its maximum likelihood estimate.
+
+We can first compute the profile log-likelihood for the `pm10tmean` coefficient numerically.
+
+```{r profileLL,cache=TRUE}
+profileLL <- function(x) {
+        form <- reformulate(c("ns(tmpd, 3)", "ns(date, 8*19)",
+                              sprintf("offset(I(%f * pm10tmean))", x)),
+                            response = "death")
+        fit <- glm(form, data = dat, family = stats::poisson)
+        logLik(fit)
+}
+profileLL <- Vectorize(profileLL)
+x <- seq(0, 0.002, len = 100)
+p <- profileLL(x)
+```
+
+Then we can plot the profile likelihood function.
+
+```{r}
+library(ggplot2)
+ggplot(mapping = aes(x, exp(p - max(p)))) + 
+        geom_line() +
+        xlab(expression(beta)) + 
+        ylab("Profile Likelihood") + 
+        theme_bw()
+```
+
+Since the profile likelihood looks very close to a Normal distribution, it seems reasonable that we can use the two-stage model here without having to use the full Poisson likelihood for each city.
+
+
+## Two-Stage Model
+
+We can specify a two-stage Normal hierarchical model as follows.
+
+\begin{eqnarray*}
+\hat{\beta}_c\mid\beta_c & \sim & \mathcal{N}(\beta_c, \hat{\sigma}_c^2)\\
+\beta_c \mid \mu,\tau & \sim & \mathcal{N}(\mu, \tau^2)\\
+\mu & \sim & \mathcal{N}(0, 10^2)\\
+\tau & \sim & Unif(0, 0.001)
+\end{eqnarray*}
+
+Here, the $\hat{\beta}_c$ and $\hat{\sigma}_c^2$ are obtained from the first stage GLM fit and are the maximum likelihood estimates. The parameter $\mu$ is our overall log-relative risk estimate for the 20 cities and $\tau$ is the "natural heterogeneity" in risk (i.e. unexplained by statistical variation) across the 20 cities.
+
+Since we already fit each of the single-city models in the first section above, we can simply recall the results here.
+```{r}
+results
+```
+
+From this we will need the vector of estimates and standard errors for the hierarchical model.
+
+```{r}
+betahat <- results$estimate
+sdhat <- results$std.error
+```
+
+Now we need to use the `greta` functions to specify our hierarchical model. First, we will give the prior distributions for $\mu$ and $\tau$ as Normal and uniform, respectively.
+
+```{r}
+mu <- normal(0, 1)
+tau <- uniform(0, 0.001)
+```
+
+Then we will specify $\beta_c$ as having a Normal distribution with mean $\mu$ and standard deviation $\tau$ for every city.
+
+```{r}
+betac <- normal(mu, tau, dim = length(betahat))
+```
+
+Finally, we will specify that the $\hat{\beta}_c$s also follow a Normal distribution. In this example, the $\hat{\beta}_c$s are the "data/outcome" for the model.
+
+```{r}
+distribution(betahat) <- normal(betac, sdhat)
+```
+
+Now we can create our model object and plot it to make sure it's properly specified.
+
+```{r}
+mod <- model(betac, mu, tau)
+plot(mod)
+```
+
+After verifying that the model is properly specified, we can run the `mcmc()` functions to draw samples from the posterior distribution. We will use similar settings as before, except now we will draw 5,000 samples.
+
+```{r multicitysampler,cache=TRUE}
+r <- greta::mcmc(mod, 
+                 sampler = hmc(), 
+                 n_samples = 5000, 
+                 chains = 1)
+```
+
+The primary parameter of interest here is the $\mu$ parameter, which is the overal risk estimate. We can draw a trace plot $\mu$ and see how it's samples look.
+
+
+```{r}
+mcmc_trace(r, "mu")
+```
+
+
+We can also look at all of the other parameters in the model by drawing 95% credible intervals.
+
+```{r}
+mcmc_intervals(r, prob_outer = 0.95)
+```
+
+We can see here that the individual city-specific estimates are generally positive, with the exception of a few cities. Also, the 95% credible interval for the overall risk estimate does not cover 0, providing strong evidence for a positive association between PM10 and mortality, on average across the 20 cities. 
+
+# Summary
+
+* Bayesian hierarchical models provide a powerful class of tools for data analysis
+
+* These kinds of models have traditionally been of limited use due to their difficulty in implementation and fitting.
+
+* The `greta` package provides a way to fit hierarchical models in a manner that uses the R language for model specification (rather than requiring a new language be learned)
+
+* Many aspects of MCMC are better-understood today, allowing for more automation of the process in packages like `greta`.
+
+
+
+
+
+
+
+
+
+
+
