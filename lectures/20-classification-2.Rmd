@@ -1,5 +1,5 @@
 ---
-title: Random Forests and Support Vector Machines
+title: Decision Trees, Bagging, Random Forests and Boosting
 date: Nov 12, 2018
 output: 
     html_document:
@@ -368,7 +368,7 @@ classification approaches.
 #### Advantages 
 
 1. Trees are very easy to explain to people. In fact, they are even easier to explain than linear regression!
-2. Some people believe that decision trees more closely mirror human decision-making than do the regression and classification approaches seen in previous chapters.
+2. Some people believe that decision trees more closely mirror human decision-making than do the regression and classification approaches seen in previous lectures.
 3. Trees can be displayed graphically, and are easily interpreted even by a non-expert (especially if they are small).
 4. Trees can easily handle qualitative predictors without the need to create dummy variables.
 
