@@ -10,27 +10,22 @@ Homework assignments and solutions will be add here throughout the courses.
 
   * Due Friday, September 14, 2018 by 11:59pm
   * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/hw0-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/hw0-assignment.Rmd))
-    * To access and submit assignment: [https://classroom.github.com/a/AiFh2wzG](https://classroom.github.com/a/AiFh2wzG)
-
 
 ### Homework 1
 
   * Due Friday, September 28, 2018 by 11:59pm
   * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/hw1-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/hw1-assignment.Rmd))
-    * To access and submit assignment: [https://classroom.github.com/a/KkRjeZ8J](https://classroom.github.com/a/KkRjeZ8J)
-
 
 ### Homework 2
 
   * Due Friday, October 12, 2018 by 11:59pm
   * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/hw2-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/hw2-assignment.Rmd))
-    * To access and submit assignment: [https://classroom.github.com/a/0zDYpUG-](https://classroom.github.com/a/0zDYpUG-)
 
 ### Homework 3
 
   * Due Friday, October 26, 2018 by 11:59pm
   * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/hw3-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/hw3-assignment.Rmd))
-    * To access and submit assignment: [https://classroom.github.com/a/g21rZQaN](https://classroom.github.com/a/g21rZQaN)
+
 
 ## 712
 
@@ -38,13 +33,11 @@ Homework assignments and solutions will be add here throughout the courses.
 
   * Due Monday, November 5, 2018 by 11:59pm
   * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/712-hw1-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/712-hw1-assignment.Rmd))
-    * To access and submit assignment: [https://classroom.github.com/a/8E5Wbm5_](https://classroom.github.com/a/8E5Wbm5_)
 
 ### Homework 2
 
   * Due Monday, November 23, 2018 by 11:59pm
   * Assignment ([HTML](https://jhu-advdatasci.github.io/2018/homeworks/712-hw2-assignment.html), [GitHub](https://github.com/jhu-advdatasci/2018/blob/master/homeworks/712-hw2-assignment.Rmd))
-    * To access and submit assignment: [https://classroom.github.com/a/TB0RuttM](https://classroom.github.com/a/TB0RuttM)
 
 
 
