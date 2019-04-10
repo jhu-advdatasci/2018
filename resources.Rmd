@@ -4,8 +4,6 @@ title: Course resources
 
 ## Interested in taking this course and want prepare over the summer? 
 
-Some things you can do to help prepare would be to take [DataCamp](https://www.datacamp.com/) courses. For example, the [learn statistics with r](https://www.datacamp.com/tracks/learn-statistics-with-r) is a godo one, but there are many others depending on what you are looking for. 
-
 We will use the R programming language. To learn more about R, follow these tutorials: 
 
 * [Getting started with R](https://rafalab.github.io/dsbook/getting-started.html)
@@ -50,4 +48,3 @@ This course will be very hands-on and focused on analyzing real-world data both 
 
 * [Rstudio's cheatsheets](http://www.rstudio.com/resources/cheatsheets/)
 * [swirl](http://swirlstats.com/)
-* [DataCamp](https://www.datacamp.com/)
